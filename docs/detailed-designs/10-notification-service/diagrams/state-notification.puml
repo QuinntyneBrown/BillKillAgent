@@ -1,0 +1,40 @@
+@startuml State_Notification
+title Feature 10 - Notification Lifecycle State Machine
+
+skinparam state {
+    BackgroundColor #141417
+    FontColor #FFFFFF
+    BorderColor #333333
+    ArrowColor #FF5C00
+}
+
+[*] --> Created : NotificationService.send()\n/ persist to DB
+
+Created : Notification record saved
+Created : Channels being resolved
+Created --> Queued : Channels determined,\ndelivery dispatched
+
+Queued : In delivery pipeline
+Queued : Parallel channel dispatch
+Queued --> Delivered : All channels\nsuccessfully delivered
+Queued --> PartiallyDelivered : Some channels failed\n/ log failures,\n schedule retry
+
+PartiallyDelivered : At least one channel\ndelivered
+PartiallyDelivered --> Delivered : Retry succeeds\n(all channels complete)
+PartiallyDelivered --> Delivered : Max retries reached\n/ mark as delivered\n with partial flag
+
+Delivered : sent_at = now()
+Delivered : Visible in notification center
+Delivered --> Read : User taps/clicks\n/ read = true,\n read_at = now()
+
+Delivered --> Dismissed : User dismisses banner\n/ dismissed_at = now()
+
+Read : User has seen it
+Read --> Dismissed : User dismisses\n(banner only)
+
+Dismissed : Banner hidden
+Dismissed --> [*] : Cleanup job\n(90 days, if read)
+
+Read --> [*] : Cleanup job\n(90 days)
+
+@enduml

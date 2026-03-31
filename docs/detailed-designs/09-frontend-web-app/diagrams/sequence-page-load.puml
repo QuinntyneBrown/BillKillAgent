@@ -1,0 +1,40 @@
+@startuml Sequence_PageLoad
+title Feature 09 - Dashboard SSR Page Load
+
+actor Browser
+participant "Next.js Server\n(RSC)" as SSR
+participant "tRPC Server\nCaller" as TRPC
+database "PostgreSQL" as DB
+participant "Browser\n(Hydration)" as Client
+
+Browser -> SSR : GET /dashboard\n(with session cookie)
+
+SSR -> SSR : Validate session\n(middleware)
+
+SSR -> TRPC : dashboard.getSummary()
+SSR -> TRPC : dashboard.getSavingsChart()
+SSR -> TRPC : dashboard.getPendingActions()
+SSR -> TRPC : dashboard.getRecentActivity()
+
+TRPC -> DB : SELECT metrics,\nactions, activity
+DB --> TRPC : Result sets
+
+TRPC --> SSR : Hydrated data
+
+SSR -> SSR : Render server components\n(MetricCards, layout)
+SSR -> SSR : dehydrate() React Query\nstate for client
+
+SSR --> Browser : Streamed HTML\n+ dehydrated state\n+ JS bundles
+
+Browser -> Client : Hydrate React tree
+Client -> Client : HydrationBoundary\nrestores React Query cache
+Client -> Client : Mount client components\n(SavingsChart, PendingActions)
+Client -> Client : Subscribe to SSE\n(/api/events)
+
+note right of Client
+    Charts render immediately
+    from dehydrated data.
+    No loading spinners.
+end note
+
+@enduml

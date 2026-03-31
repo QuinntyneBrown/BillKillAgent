@@ -1,0 +1,106 @@
+@startuml Class_Notification
+!theme plain
+title Feature 10 - Notification Service - Class Diagram
+
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+
+interface INotificationChannel {
+    +channel: NotificationChannel
+    +deliver(notification: RenderedNotification): Promise<DeliveryResult>
+}
+
+class NotificationService {
+    -channels: INotificationChannel[]
+    -prefService: NotificationPreferenceService
+    -templateEngine: NotificationTemplateEngine
+    -db: DrizzleClient
+    -redis: Redis
+    +send(params: SendNotificationParams): Promise<Notification>
+    +sendBulk(params: SendNotificationParams[]): Promise<void>
+    +getForUser(userId, options?): Promise<Notification[]>
+    +markAsRead(notificationId, userId): Promise<void>
+    +markAllAsRead(userId): Promise<void>
+    +dismiss(notificationId, userId): Promise<void>
+    +getUnreadCount(userId): Promise<number>
+}
+
+class NotificationTemplateEngine {
+    -db: DrizzleClient
+    +render(type, channel, data): RenderedContent
+    +registerTemplate(template): Promise<void>
+    +getTemplate(type, channel): Promise<Template>
+}
+
+class NotificationPreferenceService {
+    -db: DrizzleClient
+    +getEnabledChannels(userId, type): Promise<Channel[]>
+    +updatePreference(userId, type, channel, enabled): Promise<void>
+    +getPreferences(userId): Promise<Preference[]>
+    +initializeDefaults(userId): Promise<void>
+}
+
+class InAppNotificationChannel {
+    -redis: Redis
+    +channel = "in_app"
+    +deliver(notification): Promise<DeliveryResult>
+}
+
+class PushNotificationChannel {
+    -db: DrizzleClient
+    -webpush: WebPush
+    +channel = "push"
+    +deliver(notification): Promise<DeliveryResult>
+    +subscribe(userId, sub): Promise<void>
+    +unsubscribe(userId, endpoint): Promise<void>
+}
+
+class EmailNotificationChannel {
+    -resend: Resend
+    -redis: Redis
+    +channel = "email"
+    +deliver(notification): Promise<DeliveryResult>
+}
+
+class SMSNotificationChannel {
+    -twilio: TwilioClient
+    -redis: Redis
+    +channel = "sms"
+    +deliver(notification): Promise<DeliveryResult>
+}
+
+entity Notification <<table>> {
+    id: uuid
+    user_id: uuid
+    type: enum
+    channel: enum
+    title: text
+    body: text
+    severity: enum
+    action_url: text
+    read: boolean
+    created_at: timestamptz
+}
+
+entity NotificationTemplate <<table>> {
+    id: uuid
+    type: enum
+    channel: enum
+    title_template: text
+    body_template: text
+    version: integer
+    is_active: boolean
+}
+
+INotificationChannel <|.. InAppNotificationChannel
+INotificationChannel <|.. PushNotificationChannel
+INotificationChannel <|.. EmailNotificationChannel
+INotificationChannel <|.. SMSNotificationChannel
+
+NotificationService --> INotificationChannel : dispatches to
+NotificationService --> NotificationPreferenceService : checks
+NotificationService --> NotificationTemplateEngine : renders with
+NotificationService --> Notification : creates
+NotificationTemplateEngine --> NotificationTemplate : reads
+
+@enduml

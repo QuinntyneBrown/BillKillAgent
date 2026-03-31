@@ -1,0 +1,121 @@
+@startuml Feature03_Class_Diagram
+!theme plain
+title Feature 03: Autonomous Cancellation - Class Diagram
+
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+
+interface ICancellationStrategy {
+    +strategyType: CancellationStrategyType
+    +canHandle(providerName): Promise<boolean>
+    +execute(action, context): Promise<ActionResult>
+    +verify(action): Promise<VerificationResult>
+}
+
+interface IProviderFlow {
+    +id: string
+    +providerName: string
+    +flowType: FlowType
+    +steps: FlowStep[]
+    +successIndicators: StateIndicator[]
+    +failureIndicators: StateIndicator[]
+    +successRate: number
+    +version: number
+}
+
+class CancellationOrchestrator {
+    -autonomyGate: AutonomyGate
+    -actionFactory: CancellationActionFactory
+    -cancellationQueue: Queue
+    +requestCancellation(userId, subId, source): Promise<Action>
+    +processApprovedAction(actionId): Promise<void>
+    +handleActionComplete(actionId, result): Promise<void>
+    +scheduleRetry(actionId, reason): Promise<void>
+    +escalateToManual(actionId, reason): Promise<void>
+}
+
+class CancellationActionFactory {
+    -flowRegistry: ProviderFlowRegistry
+    -strategies: ICancellationStrategy[]
+    +createAction(subscription, userId): Promise<Action>
+    +selectStrategy(providerName): ICancellationStrategy
+    -evaluateStrategies(providerName): StrategyEvaluation[]
+}
+
+class BrowserCancellationStrategy {
+    -flowRunner: CancellationFlowRunner
+    +strategyType: "Browser"
+    +canHandle(providerName): Promise<boolean>
+    +execute(action, context): Promise<ActionResult>
+    +verify(action): Promise<VerificationResult>
+}
+
+class APICancellationStrategy {
+    +strategyType: "API"
+    +canHandle(providerName): Promise<boolean>
+    +execute(action, context): Promise<ActionResult>
+    +verify(action): Promise<VerificationResult>
+}
+
+class EmailCancellationStrategy {
+    -claudeClient: ClaudeApiClient
+    +strategyType: "Email"
+    +canHandle(providerName): Promise<boolean>
+    +execute(action, context): Promise<ActionResult>
+    +verify(action): Promise<VerificationResult>
+}
+
+class BrowserAutomationService {
+    +createSession(options?): Promise<BrowserSession>
+    +executeStep(session, step): Promise<StepResult>
+    +captureScreenshot(session, label): Promise<string>
+    +detectPageState(session, indicators): Promise<PageState>
+    +closeSession(session): Promise<void>
+}
+
+class CancellationFlowRunner {
+    -browserSvc: BrowserAutomationService
+    -flowRegistry: ProviderFlowRegistry
+    +runFlow(action, flow): Promise<FlowResult>
+    -executeStepSequence(session, steps): Promise<StepResult[]>
+    -handleBranch(session, branch): Promise<FlowStep[]>
+    -validateStepResult(result, expected): boolean
+    -reportTelemetry(flowId, results): Promise<void>
+}
+
+class ProviderFlowRegistry {
+    +getFlow(provider, type): Promise<ProviderFlow?>
+    +getFlowWithFallback(provider): Promise<ProviderFlow>
+    +updateSuccessRate(flowId, succeeded): Promise<void>
+    +createFlowVersion(flowId, steps): Promise<ProviderFlow>
+}
+
+class AutonomyGate {
+    +evaluateAction(userId, action): Promise<GateDecision>
+    -calculateRiskScore(action): number
+    -getUserAutonomyLevel(userId): Promise<AutonomyLevel>
+}
+
+class CancellationAction <<entity>> {
+    +id: uuid
+    +subscriptionId: uuid
+    +userId: uuid
+    +strategy: CancellationStrategyType
+    +status: ActionStatus
+    +approvedAt: Date?
+    +approvedBy: ApprovalSource?
+}
+
+ICancellationStrategy <|.. BrowserCancellationStrategy
+ICancellationStrategy <|.. APICancellationStrategy
+ICancellationStrategy <|.. EmailCancellationStrategy
+
+CancellationOrchestrator --> AutonomyGate
+CancellationOrchestrator --> CancellationActionFactory
+CancellationActionFactory --> ProviderFlowRegistry
+CancellationActionFactory o-- ICancellationStrategy
+BrowserCancellationStrategy --> CancellationFlowRunner
+CancellationFlowRunner --> BrowserAutomationService
+CancellationFlowRunner --> ProviderFlowRegistry
+
+@enduml

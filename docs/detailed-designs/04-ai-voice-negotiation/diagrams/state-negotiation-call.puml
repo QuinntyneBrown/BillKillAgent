@@ -1,0 +1,48 @@
+@startuml State_NegotiationCall
+title Negotiation Call - State Diagram
+
+skinparam state {
+    BackgroundColor<<success>> #90EE90
+    BackgroundColor<<failure>> #FFB6C1
+}
+
+[*] --> Idle
+
+Idle --> Dialing : startCall()
+
+Dialing --> Connected : callAnswered
+Dialing --> Failed : callFailed / busy / noAnswer
+
+Connected --> IVRNavigation : ivrDetected
+Connected --> AgentGreeting : humanDetected
+
+IVRNavigation --> HoldQueue : transferredToHold
+IVRNavigation --> AgentGreeting : agentConnected
+IVRNavigation --> Failed : ivrTimeout
+
+HoldQueue --> AgentGreeting : agentPickedUp
+HoldQueue --> Failed : holdTimeout(10min)
+
+AgentGreeting --> Authentication : authRequested
+
+Authentication --> NegotiationActive : authSucceeded
+Authentication --> Failed : authFailed(3x)
+
+NegotiationActive --> OfferReceived : offerDetected
+NegotiationActive --> Failed : providerHangup
+
+OfferReceived --> OfferAccepted <<success>> : offerMeetsThreshold
+OfferReceived --> OfferRejected : offerBelowThreshold
+OfferReceived --> NegotiationActive : counterOffer
+
+OfferRejected --> NegotiationActive : continueNegotiation
+OfferRejected --> Closing : walkAway
+
+OfferAccepted --> Closing : confirmChanges
+
+Closing --> CallEnded <<success>> : confirmationReceived
+
+CallEnded --> [*]
+Failed <<failure>> --> [*]
+
+@enduml

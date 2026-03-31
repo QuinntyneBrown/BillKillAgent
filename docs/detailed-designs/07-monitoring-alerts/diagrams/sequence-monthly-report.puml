@@ -1,0 +1,50 @@
+@startuml Sequence_MonthlyReport
+title Monthly Report Generation - Sequence
+
+participant "BullMQ Cron" as Cron
+participant "MonitoringScheduler" as Scheduler
+participant "MonthlyReport\nGenerator" as Reporter
+participant "SavingsCalculator\n(Feature 06)" as Savings
+participant "PostgreSQL" as DB
+participant "Notification\nService" as Notif
+
+Cron -> Scheduler: runMonthlyReport(2026-03)
+activate Scheduler
+
+Scheduler -> DB: getAllActiveUsers()
+DB --> Scheduler: userIds[]
+
+loop for each userId
+    Scheduler -> Reporter: generateReport(userId, 2026-03)
+    activate Reporter
+
+    Reporter -> DB: getSubscriptions(userId)
+    DB --> Reporter: subscriptions[]
+
+    Reporter -> Reporter: calculateSpendDelta(\n  March vs February)
+
+    Reporter -> Savings: getAggregatedSavings(\n  userId, MONTHLY)
+    Savings --> Reporter: SavingsAggregate
+
+    Reporter -> DB: getAlerts(userId, March,\n  category=NEW_CHARGE)
+    DB --> Reporter: newChargeAlerts[]
+
+    Reporter -> DB: getAlerts(userId, March,\n  category=PRICE_CHANGE)
+    DB --> Reporter: priceChangeAlerts[]
+
+    Reporter -> DB: getUpcomingRenewals(\n  userId, next 30 days)
+    DB --> Reporter: renewals[]
+
+    Reporter -> Reporter: getTopRecommendations()
+
+    Reporter -> DB: storeReport(MonthlyReport)
+    Reporter --> Scheduler: MonthlyReport
+    deactivate Reporter
+
+    Scheduler -> Notif: dispatchReport(\n  userId, report)
+    Notif -> Notif: send email + in-app alert
+end
+
+deactivate Scheduler
+
+@enduml

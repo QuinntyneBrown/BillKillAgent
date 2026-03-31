@@ -1,0 +1,49 @@
+@startuml Sequence_SendNotification
+title Feature 10 - Send Notification Flow
+
+participant "Event Source\n(Worker/Service)" as Source
+participant "NotificationService" as NS
+participant "PreferenceService" as Pref
+participant "TemplateEngine" as TE
+participant "InAppChannel" as InApp
+participant "PushChannel" as Push
+participant "EmailChannel" as Email
+database "PostgreSQL" as DB
+
+Source -> NS : send({ userId, type:\n'price_increase', data })
+
+NS -> Pref : getEnabledChannels(\n  userId, 'price_increase')
+Pref -> DB : SELECT user_notification_prefs\nWHERE user_id AND type
+DB --> Pref : Preference rows
+Pref --> NS : ['in_app', 'push', 'email']
+
+NS -> DB : INSERT notification\n(persisted for in-app center)
+DB --> NS : { id: notif_123 }
+
+par Render per channel
+    NS -> TE : render('price_increase',\n  'in_app', data)
+    TE -> DB : SELECT template\nWHERE type, channel, active
+    TE --> NS : { title, body }
+
+    NS -> TE : render('price_increase',\n  'push', data)
+    TE --> NS : { title, body }
+
+    NS -> TE : render('price_increase',\n  'email', data)
+    TE --> NS : { title, htmlBody }
+end
+
+par Deliver per channel
+    NS -> InApp : deliver(renderedInApp)
+    InApp --> NS : { success: true }
+
+    NS -> Push : deliver(renderedPush)
+    Push --> NS : { success: true }
+
+    NS -> Email : deliver(renderedEmail)
+    Email --> NS : { success: true }
+end
+
+NS -> DB : UPDATE notification\nSET sent_at = now()
+NS --> Source : { notification: notif_123 }
+
+@enduml

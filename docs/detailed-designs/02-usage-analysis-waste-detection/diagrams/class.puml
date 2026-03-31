@@ -1,0 +1,136 @@
+@startuml Feature02_Class_Diagram
+!theme plain
+title Feature 02: Usage Analysis & Waste Detection - Class Diagram
+
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+
+interface IUsageDataProvider {
+    +getUsageProfile(userId, subscription): Promise<UsageProfile>
+    +getSupportedSignals(): UsageSignalType[]
+}
+
+interface IScoringStrategy {
+    +name: string
+    +defaultWeight: number
+    +score(subscription, profile, context): Promise<DimensionScore>
+}
+
+class UsageAnalyzer {
+    -txRepo: ITransactionRepository
+    -subRepo: ISubscriptionRepository
+    +analyzeUsage(userId, subscription, txns): Promise<UsageProfile>
+    -calculateChargeCadence(txns): CadenceMetrics
+    -detectAmountTrend(txns): TrendDirection
+    -findCorrelatedTransactions(sub, allTxns): Transaction[]
+}
+
+class ValueScorer {
+    -strategies: IScoringStrategy[]
+    -weights: StrategyWeights
+    +scoreSubscription(sub, profile): Promise<ValueScore>
+    +registerStrategy(strategy): void
+    +adjustWeights(weights): void
+    -combineScores(dimensions): number
+}
+
+class CostEfficiencyStrategy {
+    +name: "cost_efficiency"
+    +defaultWeight: 0.30
+    +score(sub, profile, ctx): Promise<DimensionScore>
+    -compareToCategoryMedian(sub): number
+    -evaluatePriceTrend(sub, ctx): number
+}
+
+class UsageSignalStrategy {
+    +name: "usage_signal"
+    +defaultWeight: 0.30
+    +score(sub, profile, ctx): Promise<DimensionScore>
+    -scoreCadence(profile): number
+    -scoreRecency(profile): number
+}
+
+class CategoryEssentialityStrategy {
+    +name: "category_essentiality"
+    +defaultWeight: 0.20
+    +score(sub, profile, ctx): Promise<DimensionScore>
+    -getCategoryBaseScore(category): number
+}
+
+class UserEngagementStrategy {
+    +name: "user_engagement"
+    +defaultWeight: 0.20
+    +score(sub, profile, ctx): Promise<DimensionScore>
+    -scoreChargeStability(profile): number
+}
+
+class WasteDetector {
+    -txRepo: ITransactionRepository
+    +detectWaste(userId, subs): Promise<WasteFlag[]>
+    -checkUnused(sub): WasteFlag?
+    -checkPriceCreep(sub, history): WasteFlag?
+    -checkLowValue(sub): WasteFlag?
+    -estimateAnnualSavings(sub, action): number
+}
+
+class OverlapDetector {
+    -overlapMapping: FunctionalOverlapMap
+    +detectOverlaps(subs): Promise<OverlapGroup[]>
+    -groupByCategory(subs): Map
+    -detectFunctionalOverlap(subs): OverlapGroup[]
+    -rankWithinGroup(group): SubscriptionWithScore[]
+    -createOverlapWasteFlags(groups): WasteFlag[]
+}
+
+class RecommendationEngine {
+    -claudeClient: ClaudeApiClient
+    +generateRecommendations(userId, results): Promise<Recommendation[]>
+    -determineAction(score, flags, overlaps): RecommendedAction
+    -generateReasoning(sub, action, ctx): Promise<string>
+    -prioritizeRecommendations(recs): Recommendation[]
+}
+
+class ValueScore <<value>> {
+    +subscriptionId: uuid
+    +compositeScore: number
+    +dimensions: DimensionScore[]
+    +scoredAt: Date
+    +reasoning: string
+}
+
+class WasteFlag <<entity>> {
+    +id: uuid
+    +subscriptionId: uuid
+    +flagType: WasteFlagType
+    +severity: Severity
+    +valueScore: number
+    +reasoning: string
+    +recommendedAction: RecommendedAction
+    +estimatedAnnualSavings: number
+    +overlapGroupId: uuid?
+}
+
+class UsageProfile <<value>> {
+    +subscriptionId: uuid
+    +chargeCadence: CadenceMetrics
+    +amountTrend: TrendDirection
+    +lastChargeRecency: number
+    +correlatedTransactionCount: number
+    +inferredUsageLevel: UsageLevel
+}
+
+IScoringStrategy <|.. CostEfficiencyStrategy
+IScoringStrategy <|.. UsageSignalStrategy
+IScoringStrategy <|.. CategoryEssentialityStrategy
+IScoringStrategy <|.. UserEngagementStrategy
+IUsageDataProvider <|.. UsageAnalyzer
+
+ValueScorer o-- IScoringStrategy : strategies
+UsageAnalyzer ..> UsageProfile : produces
+ValueScorer ..> ValueScore : produces
+WasteDetector ..> WasteFlag : produces
+OverlapDetector ..> WasteFlag : produces
+RecommendationEngine --> WasteDetector : uses
+RecommendationEngine --> OverlapDetector : uses
+
+@enduml

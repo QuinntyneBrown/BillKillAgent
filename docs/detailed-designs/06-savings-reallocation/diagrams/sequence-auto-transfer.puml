@@ -1,0 +1,56 @@
+@startuml Sequence_AutoTransfer
+title Automated Savings Transfer - Sequence
+
+participant "BullMQ\nScheduler" as Cron
+participant "TransferScheduler" as Scheduler
+participant "SavingsCalculator" as Calc
+participant "DestinationAccount\nManager" as DestMgr
+participant "SavingsTransfer\nService" as Transfer
+participant "Plaid API" as Plaid
+participant "PostgreSQL" as DB
+
+Cron -> Scheduler: executeScheduledTransfer(userId)
+activate Scheduler
+
+Scheduler -> Calc: calculateUnrealizedSavings(userId, since)
+activate Calc
+Calc -> DB: query completed actions since last transfer
+DB --> Calc: action records
+Calc -> Calc: sum savings per action type
+Calc --> Scheduler: unrealizedAmountCents = 4250
+deactivate Calc
+
+Scheduler -> Scheduler: check minimum threshold\n(4250 >= 500: proceed)
+
+Scheduler -> DestMgr: getDestinations(userId)
+DestMgr -> DB: query destinations
+DB --> DestMgr: destinations[]
+DestMgr --> Scheduler: [{savings 70%}, {brokerage 30%}]
+
+Scheduler -> Transfer: initiateTransfer(\n  dest=savings, amount=2975)
+activate Transfer
+Transfer -> Plaid: POST /transfer/create\n(amount=$29.75, ACH)
+Plaid --> Transfer: {transferId, status: pending}
+Transfer -> DB: insert Transfer{INITIATED}
+Transfer --> Scheduler: Transfer
+deactivate Transfer
+
+Scheduler -> Transfer: initiateTransfer(\n  dest=brokerage, amount=1275)
+activate Transfer
+Transfer -> Plaid: POST /transfer/create\n(amount=$12.75, ACH)
+Plaid --> Transfer: {transferId, status: pending}
+Transfer -> DB: insert Transfer{INITIATED}
+Transfer --> Scheduler: Transfer
+deactivate Transfer
+
+Scheduler -> DB: update lastTransferDate
+Scheduler --> Cron: TransferBatch{2 transfers}
+deactivate Scheduler
+
+... 1-3 business days later ...
+
+Plaid -> Transfer: webhook: transfer.completed
+Transfer -> DB: update Transfer{COMPLETED}
+Transfer -> Calc: markSavingsRealized(userId, amount)
+
+@enduml

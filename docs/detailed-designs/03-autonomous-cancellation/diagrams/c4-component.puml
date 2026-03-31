@@ -1,0 +1,35 @@
+@startuml Feature03_C4_Component
+!include <C4/C4_Component>
+
+title Feature 03: Autonomous Cancellation - Component Diagram
+
+Container_Boundary(cancellation, "Autonomous Cancellation Container") {
+    Component(orchestrator, "CancellationOrchestrator", "TypeScript", "Coordinates cancellation lifecycle from request to completion")
+    Component(action_factory, "CancellationActionFactory", "TypeScript", "Selects optimal strategy and creates action entities")
+    Component(autonomy_gate, "AutonomyGate", "TypeScript", "Evaluates whether actions can auto-execute or need approval")
+    Component(flow_runner, "CancellationFlowRunner", "TypeScript", "Executes provider-specific cancellation step sequences")
+    Component(browser_svc, "BrowserAutomationService", "TypeScript, Playwright", "Low-level browser control, screenshots, anti-detection")
+    Component(flow_registry, "ProviderFlowRegistry", "TypeScript", "Manages versioned cancellation flows and success metrics")
+}
+
+Container_Ext(frontend, "Next.js Web App", "React", "Action approval UI")
+Container_Ext(analysis, "Waste Detection", "Feature 02", "Provides cancellation recommendations")
+ContainerDb_Ext(postgres, "PostgreSQL", "Drizzle ORM", "actions, cancellation_attempts, provider_flows")
+ContainerDb_Ext(redis, "Redis", "BullMQ", "Cancellation job queue")
+System_Ext(providers, "Service Providers", "Subscription provider websites and APIs")
+
+Rel(analysis, orchestrator, "Sends cancellation\nrecommendation", "BullMQ job")
+Rel(frontend, orchestrator, "User approves\ncancellation", "tRPC")
+Rel(orchestrator, autonomy_gate, "Checks if action\ncan auto-execute", "in-process")
+Rel(orchestrator, action_factory, "Creates cancellation\naction", "in-process")
+Rel(action_factory, flow_registry, "Queries available\nflows", "in-process")
+Rel(orchestrator, flow_runner, "Delegates execution", "BullMQ job")
+Rel(flow_runner, browser_svc, "Controls browser\nsessions", "in-process")
+Rel(flow_runner, flow_registry, "Loads flow steps,\nreports telemetry", "in-process")
+Rel(browser_svc, providers, "Navigates cancellation\npages", "HTTPS/Browser")
+Rel(orchestrator, postgres, "Persists actions\nand attempts", "Drizzle")
+Rel(flow_registry, postgres, "Reads/writes\nflow definitions", "Drizzle")
+Rel(orchestrator, redis, "Queues jobs", "BullMQ")
+
+LAYOUT_WITH_LEGEND()
+@enduml

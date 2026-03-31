@@ -1,0 +1,139 @@
+@startuml Class_VoiceNegotiation
+title AI Voice Negotiation - Class Diagram
+
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+
+interface INegotiationStrategy {
+    +planStrategy(ctx: NegotiationContext): Promise<NegotiationStrategy>
+    +validateStrategy(s: NegotiationStrategy): boolean
+    +adjustStrategy(s: NegotiationStrategy, f: CallFeedback): NegotiationStrategy
+}
+
+interface IVoiceProvider {
+    +initiateCall(phone: string, cfg: CallConfig): Promise<string>
+    +sendDTMF(sid: string, digits: string): Promise<void>
+    +terminateCall(sid: string): Promise<void>
+    +getMediaStreamUrl(sid: string): string
+    +onStatusChange(sid: string, cb: Function): void
+}
+
+class NegotiationOrchestrator {
+    -planner: NegotiationStrategyPlanner
+    -callMgr: VoiceCallManager
+    -stt: SpeechToTextStream
+    -tts: TextToSpeechEngine
+    -stateMachine: ConversationStateMachine
+    -agent: NegotiationAgent
+    -logger: TranscriptLogger
+    +execute(job: NegotiationJobData): Promise<NegotiationOutcome>
+    +setupAudioPipeline(): Promise<void>
+    +teardown(): Promise<void>
+}
+
+class NegotiationStrategyPlanner {
+    -claudeClient: ClaudeAPIClient
+    +planStrategy(ctx: NegotiationContext): Promise<NegotiationStrategy>
+    +buildPrompt(ctx: NegotiationContext): string
+    +validateStrategy(s: NegotiationStrategy): boolean
+}
+
+class VoiceCallManager {
+    -twilioClient: TwilioClient
+    -callSid: string
+    +initiateCall(phone: string, cfg: CallConfig): Promise<string>
+    +sendDTMF(digits: string): Promise<void>
+    +terminateCall(reason: string): Promise<void>
+    +getMediaStreamUrl(): string
+    +onStatusChange(cb: Function): void
+}
+
+class SpeechToTextStream {
+    -ws: WebSocket
+    -config: STTConfig
+    +connect(cfg: STTConfig): Promise<void>
+    +feedAudio(chunk: Buffer): void
+    +onTranscript(cb: Function): void
+    +onUtteranceEnd(cb: Function): void
+    +disconnect(): void
+}
+
+class TextToSpeechEngine {
+    -voiceId: string
+    -config: TTSConfig
+    +synthesize(text: string): AsyncGenerator<Buffer>
+    +speakIntoCall(text: string, ws: WebSocket): Promise<void>
+    +interrupt(): void
+    +setVoice(id: string): void
+}
+
+class ConversationStateMachine {
+    -currentState: ConversationState
+    -stateConfig: Map<State, StateConfig>
+    +transition(event: ConversationEvent): ConversationState
+    +getCurrentState(): ConversationState
+    +getStateContext(): StateContext
+    +isTerminal(): boolean
+}
+
+class NegotiationAgent {
+    -claudeClient: ClaudeAPIClient
+    -strategy: NegotiationStrategy
+    -history: ConversationTurn[]
+    +generateResponse(text: string, state: ConversationState): Promise<AgentResponse>
+    +updateContext(turn: ConversationTurn): void
+    +detectOffer(text: string): RetentionOffer | null
+}
+
+class RetentionOfferEvaluator {
+    +evaluate(offer: RetentionOffer, strategy: NegotiationStrategy): OfferDecision
+    +normalizeOffer(offer: RetentionOffer, bill: number): NormalizedOffer
+    +shouldEscalate(round: number, strategy: NegotiationStrategy): boolean
+}
+
+class TranscriptLogger {
+    -buffer: TranscriptTurn[]
+    -redisClient: RedisClient
+    +logTurn(turn: TranscriptTurn): void
+    +persist(sessionId: string): Promise<void>
+    +streamToClient(userId: string, turn: TranscriptTurn): void
+}
+
+class NegotiationSession <<entity>> {
+    +id: string
+    +userId: string
+    +subscriptionId: string
+    +status: NegotiationStatus
+    +originalAmount: number
+    +newAmount: number | null
+    +savingsAmount: number | null
+    +confirmationNumber: string | null
+}
+
+class RetentionOffer <<entity>> {
+    +id: string
+    +sessionId: string
+    +offerType: OfferType
+    +newMonthlyAmount: number | null
+    +monthlySavings: number
+    +isAccepted: boolean
+    +roundNumber: number
+}
+
+NegotiationStrategyPlanner ..|> INegotiationStrategy
+VoiceCallManager ..|> IVoiceProvider
+
+NegotiationOrchestrator --> NegotiationStrategyPlanner
+NegotiationOrchestrator --> VoiceCallManager
+NegotiationOrchestrator --> SpeechToTextStream
+NegotiationOrchestrator --> TextToSpeechEngine
+NegotiationOrchestrator --> ConversationStateMachine
+NegotiationOrchestrator --> NegotiationAgent
+NegotiationOrchestrator --> TranscriptLogger
+
+NegotiationAgent --> RetentionOfferEvaluator
+NegotiationAgent --> ConversationStateMachine
+
+NegotiationSession "1" --> "*" RetentionOffer : contains
+
+@enduml

@@ -1,0 +1,34 @@
+@startuml State_User
+title Feature 08 - User Account State Machine
+
+skinparam state {
+    BackgroundColor #141417
+    FontColor #FFFFFF
+    BorderColor #333333
+    ArrowColor #FF5C00
+}
+
+[*] --> Anonymous
+
+Anonymous --> Registered : Sign up\n(email or OAuth)
+Anonymous --> Registered : Re-login\n(existing account)
+
+Registered --> Onboarding : Email verified\n/ completeSignUp()
+
+Onboarding --> Active : Complete onboarding\n(bank connected,\n first scan done)
+
+Active --> Active : Update profile,\nchange autonomy,\nupgrade/downgrade tier
+
+Active --> Suspended : Payment failed\n(3 consecutive)
+
+Suspended --> Active : Payment resolved\n(webhook: invoice.paid)
+
+Active --> Deleted : User requests deletion\n/ soft-delete, disable auth,\n cancel subscription
+
+Suspended --> Deleted : User requests deletion
+
+Deleted --> Active : Reactivate within\n30-day grace period
+
+Deleted --> [*] : 30-day purge job\n/ hard-delete all data
+
+@enduml

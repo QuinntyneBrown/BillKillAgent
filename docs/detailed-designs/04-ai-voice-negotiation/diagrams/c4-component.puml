@@ -1,0 +1,47 @@
+@startuml C4_Component_VoiceNegotiation
+!include <C4/C4_Component>
+
+title AI Voice Negotiation - Component Diagram (C4 Level 3)
+
+System_Ext(claude, "Claude API", "LLM reasoning for strategy and real-time responses")
+System_Ext(twilio, "Twilio", "Telephony: outbound calls and media streams")
+System_Ext(deepgram, "Deepgram", "Real-time speech-to-text via WebSocket")
+System_Ext(elevenlabs, "ElevenLabs", "Text-to-speech voice synthesis")
+
+Container_Boundary(voice, "Voice Negotiation Container") {
+    Component(orchestrator, "NegotiationOrchestrator", "TypeScript", "Coordinates end-to-end negotiation workflow")
+    Component(planner, "NegotiationStrategyPlanner", "TypeScript", "Generates negotiation playbook via Claude")
+    Component(callMgr, "VoiceCallManager", "TypeScript", "Twilio call lifecycle management")
+    Component(stt, "SpeechToTextStream", "TypeScript", "Deepgram WebSocket stream for real-time STT")
+    Component(tts, "TextToSpeechEngine", "TypeScript", "ElevenLabs streaming voice synthesis")
+    Component(stateMachine, "ConversationStateMachine", "TypeScript", "Manages call phase transitions")
+    Component(agent, "NegotiationAgent", "TypeScript", "Claude-driven real-time response generation")
+    Component(offerEval, "RetentionOfferEvaluator", "TypeScript", "Evaluates provider offers against targets")
+    Component(logger, "TranscriptLogger", "TypeScript", "Persists conversation transcript")
+}
+
+ContainerDb(postgres, "PostgreSQL", "Drizzle ORM", "Sessions, transcripts, offers")
+ContainerDb(redis, "Redis", "Pub/Sub", "Real-time UI updates, caching")
+
+Rel(orchestrator, planner, "Requests strategy")
+Rel(orchestrator, callMgr, "Initiates and monitors call")
+Rel(orchestrator, stt, "Connects audio pipeline")
+Rel(orchestrator, tts, "Connects audio pipeline")
+Rel(orchestrator, stateMachine, "Drives state transitions")
+Rel(orchestrator, logger, "Persists transcript")
+
+Rel(agent, offerEval, "Evaluates detected offers")
+Rel(stateMachine, agent, "Provides state context")
+
+Rel(planner, claude, "Generates strategy", "HTTPS")
+Rel(agent, claude, "Generates responses", "HTTPS")
+Rel(callMgr, twilio, "Places calls, sends DTMF", "HTTPS/WS")
+Rel(stt, deepgram, "Streams audio, receives text", "WebSocket")
+Rel(tts, elevenlabs, "Sends text, receives audio", "HTTPS")
+
+Rel(logger, postgres, "Writes transcripts", "Drizzle")
+Rel(orchestrator, redis, "Publishes status updates", "ioredis")
+Rel(orchestrator, postgres, "Writes session outcomes", "Drizzle")
+
+LAYOUT_WITH_LEGEND()
+@enduml

@@ -1,0 +1,33 @@
+@startuml Sequence_SignUp
+title Feature 08 - Email Sign-Up Flow
+
+actor User
+participant "Frontend\n(Next.js)" as FE
+participant "Supabase Auth" as SA
+participant "tRPC API" as API
+participant "AuthService" as Auth
+participant "Stripe" as Stripe
+database "PostgreSQL" as DB
+
+User -> FE : Enter email + password\nClick "Sign Up"
+FE -> SA : supabase.auth.signUp(\n  { email, password })
+SA --> FE : { user, session: null }\n(pending verification)
+FE --> User : "Check your email"
+
+User -> SA : Click verification link
+SA -> SA : Verify email,\ncreate session
+SA -> FE : Redirect /auth/callback\nwith access_token + refresh_token
+
+FE -> API : auth.completeSignUp(\n  { supabaseUserId, email })
+API -> Auth : completeSignUp()
+Auth -> DB : Check users.supabase_auth_id\n(prevent duplicates)
+Auth -> Stripe : customers.create({ email })
+Stripe --> Auth : { id: cus_xxx }
+Auth -> DB : INSERT users\n(autonomy=supervised,\n tier=free,\n stripe_customer_id=cus_xxx)
+Auth -> DB : INSERT user_settings\n(defaults)
+Auth --> API : User profile
+API --> FE : { user, isNewUser: true }
+
+FE --> User : Redirect to\nConnect Bank screen
+
+@enduml

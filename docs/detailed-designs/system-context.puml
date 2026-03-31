@@ -1,0 +1,30 @@
+@startuml BillKillAgent_System_Context
+!include <C4/C4_Context>
+
+title BillKillAgent - System Context Diagram (C4 Level 1)
+
+Person(user, "User", "Consumer who wants to reduce recurring bills and cancel unwanted subscriptions")
+
+System(billkill, "BillKillAgent", "Autonomous AI bill negotiation platform that discovers subscriptions, detects waste, and takes action to save money")
+
+System_Ext(plaid, "Plaid", "Financial data aggregation - bank account linking and transaction access")
+System_Ext(twilio, "Twilio", "Telephony platform for outbound negotiation calls and SMS notifications")
+System_Ext(deepgram, "Deepgram", "Speech-to-text transcription for real-time call analysis")
+System_Ext(elevenlabs, "ElevenLabs", "Text-to-speech voice synthesis for autonomous phone negotiations")
+System_Ext(claude_api, "Claude API", "LLM reasoning for negotiation strategy, waste analysis, and decision-making")
+System_Ext(stripe, "Stripe", "Payment processing for platform subscription billing")
+System_Ext(financial_inst, "Financial Institutions", "Banks and credit card issuers providing transaction data via Plaid")
+System_Ext(service_providers, "Service Providers", "Cable, internet, insurance, and subscription service companies")
+
+Rel(user, billkill, "Connects bank accounts, reviews recommendations, approves actions", "HTTPS")
+Rel(billkill, plaid, "Links accounts, syncs transactions", "HTTPS/REST")
+Rel(billkill, twilio, "Places negotiation calls, sends SMS", "HTTPS/REST")
+Rel(billkill, deepgram, "Streams call audio for transcription", "WebSocket")
+Rel(billkill, elevenlabs, "Generates speech for phone negotiations", "HTTPS/REST")
+Rel(billkill, claude_api, "Analyzes subscriptions, generates negotiation scripts", "HTTPS/REST")
+Rel(billkill, stripe, "Processes platform subscription payments", "HTTPS/REST")
+Rel(plaid, financial_inst, "Retrieves account and transaction data", "Proprietary")
+Rel(billkill, service_providers, "Cancels subscriptions, negotiates bills", "Browser/Phone/API")
+
+LAYOUT_WITH_LEGEND()
+@enduml

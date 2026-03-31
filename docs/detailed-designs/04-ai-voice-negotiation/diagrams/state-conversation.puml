@@ -1,0 +1,53 @@
+@startuml State_Conversation
+title Conversation Phase - State Diagram
+
+skinparam state {
+    BackgroundColor<<positive>> #90EE90
+    BackgroundColor<<negative>> #FFB6C1
+}
+
+[*] --> Opening
+
+Opening : Agent greets provider rep
+Opening : States purpose of call
+Opening --> IdentityVerification : repAsksForVerification
+
+IdentityVerification : Provides account number
+IdentityVerification : Confirms name, ZIP, last4
+IdentityVerification --> ProblemStatement : identityConfirmed
+IdentityVerification --> Rejection <<negative>> : verificationFailed
+
+ProblemStatement : "My bill is too high"
+ProblemStatement : Cites competitor pricing
+ProblemStatement : References loyalty tenure
+ProblemStatement --> Negotiating : repEngages
+
+Negotiating : Presents leverage points
+Negotiating : Requests specific discount
+Negotiating --> CounterOffer : repMakesOffer
+Negotiating --> Escalation : repRefusesToNegotiate
+
+CounterOffer : Evaluates offer terms
+CounterOffer : Compares to target savings
+CounterOffer --> Acceptance <<positive>> : offerAcceptable
+CounterOffer --> Negotiating : counterWithHigherAsk
+CounterOffer --> Escalation : belowMinimum
+
+Escalation : Requests supervisor
+Escalation : Asks for retention dept
+Escalation --> Negotiating : supervisorConnected
+Escalation --> Rejection <<negative>> : escalationDenied
+
+Acceptance <<positive>> : Confirms new rate
+Acceptance : Requests confirmation number
+Acceptance --> WrapUp : detailsConfirmed
+
+Rejection <<negative>> : Thanks rep for time
+Rejection : Declines to proceed
+Rejection --> WrapUp : closingRemarks
+
+WrapUp : Summarizes agreed changes
+WrapUp : Confirms effective date
+WrapUp --> [*] : callEnds
+
+@enduml

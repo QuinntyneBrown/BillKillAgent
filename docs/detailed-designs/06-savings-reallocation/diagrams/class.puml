@@ -1,0 +1,86 @@
+@startuml Class_SavingsReallocation
+title Savings Reallocation - Class Diagram
+
+skinparam classAttributeIconSize 0
+
+interface ISavingsDestination {
+    +id: string
+    +accountType: string
+    +displayName: string
+    +transfer(amountCents: number, desc: string): Promise<TransferResult>
+    +getBalance(): Promise<number | null>
+    +isAvailable(): Promise<boolean>
+}
+
+class SavingsCalculator {
+    +calculateForAction(actionId: string): Promise<SavingsRecord>
+    +calculateUnrealizedSavings(userId: string, since: Date): Promise<number>
+    +getAggregatedSavings(userId: string, period: Period): Promise<SavingsAggregate>
+    +recalculate(userId: string): Promise<void>
+}
+
+class SavingsTransferService {
+    -plaidClient: PlaidClient
+    +initiateTransfer(req: TransferRequest): Promise<Transfer>
+    +handleWebhook(event: PlaidWebhookEvent): Promise<void>
+    +retryFailedTransfer(transferId: string): Promise<Transfer>
+    +cancelTransfer(transferId: string): Promise<void>
+}
+
+class DestinationAccountManager {
+    -plaidClient: PlaidClient
+    +addDestination(userId: string, accountId: string, alloc: number): Promise<Destination>
+    +removeDestination(userId: string, destId: string): Promise<void>
+    +updateAllocations(userId: string, allocs: AllocationUpdate[]): Promise<void>
+    +getDestinations(userId: string): Promise<Destination[]>
+}
+
+class TransferScheduler {
+    -queue: BullMQ.Queue
+    +scheduleUser(userId: string, config: ScheduleConfig): Promise<void>
+    +pauseSchedule(userId: string): Promise<void>
+    +resumeSchedule(userId: string): Promise<void>
+    +executeScheduledTransfer(userId: string): Promise<TransferBatch>
+}
+
+class PlaidACHDestination {
+    -plaidClient: PlaidClient
+    -accountId: string
+}
+
+class ManualDestination {
+    -accountInfo: AccountInfo
+}
+
+class SavingsRecord <<entity>> {
+    +id: string
+    +userId: string
+    +actionId: string
+    +actionType: string
+    +monthlySavingsCents: number
+    +effectiveDate: Date
+    +isActive: boolean
+}
+
+class Transfer <<entity>> {
+    +id: string
+    +userId: string
+    +destinationId: string
+    +amountCents: number
+    +status: TransferStatus
+    +plaidTransferId: string | null
+    +retryCount: number
+}
+
+PlaidACHDestination ..|> ISavingsDestination
+ManualDestination ..|> ISavingsDestination
+
+TransferScheduler --> SavingsCalculator
+TransferScheduler --> SavingsTransferService
+TransferScheduler --> DestinationAccountManager
+SavingsTransferService --> ISavingsDestination : uses
+
+SavingsCalculator ..> SavingsRecord : produces
+SavingsTransferService ..> Transfer : produces
+
+@enduml

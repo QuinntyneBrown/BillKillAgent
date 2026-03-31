@@ -1,0 +1,64 @@
+@startuml Sequence_Analyze_Subscriptions
+title Analyze Subscriptions for Waste
+
+queue "BullMQ" as Queue
+participant "UsageAnalyzer" as UA
+participant "ValueScorer" as VS
+participant "WasteDetector" as WD
+participant "OverlapDetector" as OD
+participant "Recommendation\nEngine" as RE
+participant "Claude API" as Claude
+database "PostgreSQL" as DB
+
+Queue -> UA: Process "analyze-subscriptions"\njob(userId)
+
+UA -> DB: SELECT subscriptions\nWHERE user_id = ?
+DB --> UA: subscriptions[]
+UA -> DB: SELECT transactions\nWHERE user_id = ?
+DB --> UA: transactions[]
+
+loop for each subscription
+    UA -> UA: calculateChargeCadence()
+    UA -> UA: detectAmountTrend()
+    UA -> UA: findCorrelatedTransactions()
+    UA --> UA: UsageProfile
+end
+
+UA -> VS: scoreSubscription(sub, profile)\nfor each subscription
+
+loop for each subscription
+    VS -> VS: CostEfficiencyStrategy.score()
+    VS -> VS: UsageSignalStrategy.score()
+    VS -> VS: CategoryEssentialityStrategy.score()
+    VS -> VS: UserEngagementStrategy.score()
+    VS -> VS: combineScores(dimensions)
+    VS --> VS: ValueScore
+end
+
+VS -> WD: detectWaste(userId, scoredSubs)
+WD -> WD: checkUnused() for each
+WD -> WD: checkPriceCreep() for each
+WD -> WD: checkLowValue() for each
+WD --> WD: WasteFlag[]
+
+VS -> OD: detectOverlaps(scoredSubs)
+OD -> OD: groupByCategory()
+OD -> OD: detectFunctionalOverlap()
+OD -> OD: rankWithinGroup()
+OD -> OD: createOverlapWasteFlags()
+OD --> OD: OverlapGroup[], WasteFlag[]
+
+WD -> RE: wasteFlags[]
+OD -> RE: overlapGroups[]
+RE -> RE: determineAction() for each
+RE -> RE: prioritizeRecommendations()
+
+loop for each recommendation
+    RE -> Claude: Generate reasoning text\n(subscription context + action)
+    Claude --> RE: Natural language reasoning
+end
+
+RE -> DB: INSERT waste_flags
+RE -> DB: UPDATE subscriptions\n(set recommendation state)
+
+@enduml

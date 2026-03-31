@@ -1,0 +1,267 @@
+@startuml BillKillAgent_Database_ERD
+!theme plain
+title BillKillAgent - Database Entity Relationship Diagram
+
+skinparam linetype ortho
+skinparam ranksep 40
+skinparam nodesep 30
+
+entity "users" as users {
+    * id : uuid <<PK>>
+    --
+    * supabase_auth_id : text <<UNIQUE>>
+    * email : text
+    display_name : text
+    avatar_url : text
+    autonomy_level : enum
+    * stripe_customer_id : text
+    * plan_tier : enum
+    * created_at : timestamptz
+    * updated_at : timestamptz
+}
+
+entity "plaid_items" as plaid_items {
+    * id : uuid <<PK>>
+    --
+    * user_id : uuid <<FK users>>
+    * plaid_item_id : text <<UNIQUE>>
+    * access_token : text (encrypted)
+    * institution_name : text
+    institution_logo : text
+    * status : enum
+    * cursor : text
+    error_code : text
+    * consented_at : timestamptz
+    * created_at : timestamptz
+    * updated_at : timestamptz
+}
+
+entity "accounts" as accounts {
+    * id : uuid <<PK>>
+    --
+    * plaid_item_id : uuid <<FK plaid_items>>
+    * user_id : uuid <<FK users>>
+    * plaid_account_id : text <<UNIQUE>>
+    * name : text
+    * type : enum
+    * subtype : text
+    * mask : text
+    * current_balance : numeric
+    * currency_code : text
+    * created_at : timestamptz
+    * updated_at : timestamptz
+}
+
+entity "transactions" as transactions {
+    * id : uuid <<PK>>
+    --
+    * account_id : uuid <<FK accounts>>
+    * user_id : uuid <<FK users>>
+    * plaid_transaction_id : text <<UNIQUE>>
+    * amount : numeric
+    * currency_code : text
+    * date : date
+    * merchant_name : text
+    * normalized_merchant : text
+    * category : text[]
+    * pending : boolean
+    * created_at : timestamptz
+}
+
+entity "subscriptions" as subscriptions {
+    * id : uuid <<PK>>
+    --
+    * user_id : uuid <<FK users>>
+    * merchant_name : text
+    * normalized_merchant : text
+    logo_url : text
+    * category : text
+    * estimated_amount : numeric
+    * frequency : enum
+    * confidence_score : numeric
+    * status : enum
+    * first_seen_at : date
+    last_charged_at : date
+    * created_at : timestamptz
+    * updated_at : timestamptz
+}
+
+entity "waste_flags" as waste_flags {
+    * id : uuid <<PK>>
+    --
+    * subscription_id : uuid <<FK subscriptions>>
+    * user_id : uuid <<FK users>>
+    * flag_type : enum
+    * severity : enum
+    * value_score : integer
+    * reasoning : text
+    * recommended_action : enum
+    estimated_annual_savings : numeric
+    overlap_group_id : uuid
+    * created_at : timestamptz
+    * resolved_at : timestamptz
+}
+
+entity "actions" as actions {
+    * id : uuid <<PK>>
+    --
+    * subscription_id : uuid <<FK subscriptions>>
+    * user_id : uuid <<FK users>>
+    * action_type : enum
+    * status : enum
+    * autonomy_level_required : enum
+    approved_at : timestamptz
+    approved_by : enum
+    * created_at : timestamptz
+    * updated_at : timestamptz
+}
+
+entity "cancellation_attempts" as cancellation_attempts {
+    * id : uuid <<PK>>
+    --
+    * action_id : uuid <<FK actions>>
+    * strategy : enum
+    * status : enum
+    * started_at : timestamptz
+    completed_at : timestamptz
+    error_message : text
+    screenshot_urls : text[]
+    retry_count : integer
+    * created_at : timestamptz
+}
+
+entity "negotiation_sessions" as negotiation_sessions {
+    * id : uuid <<PK>>
+    --
+    * action_id : uuid <<FK actions>>
+    * provider_name : text
+    * channel : enum
+    * status : enum
+    * call_sid : text
+    transcript : jsonb
+    current_offer : numeric
+    best_offer : numeric
+    original_amount : numeric
+    * started_at : timestamptz
+    ended_at : timestamptz
+    * created_at : timestamptz
+}
+
+entity "savings_records" as savings_records {
+    * id : uuid <<PK>>
+    --
+    * user_id : uuid <<FK users>>
+    * action_id : uuid <<FK actions>>
+    * savings_type : enum
+    * amount_saved : numeric
+    * period : enum
+    * effective_date : date
+    * verified : boolean
+    * created_at : timestamptz
+}
+
+entity "savings_destinations" as savings_destinations {
+    * id : uuid <<PK>>
+    --
+    * user_id : uuid <<FK users>>
+    * account_id : uuid <<FK accounts>>
+    * allocation_pct : numeric
+    * is_active : boolean
+    * created_at : timestamptz
+    * updated_at : timestamptz
+}
+
+entity "transfers" as transfers {
+    * id : uuid <<PK>>
+    --
+    * savings_destination_id : uuid <<FK savings_destinations>>
+    * user_id : uuid <<FK users>>
+    * amount : numeric
+    * status : enum
+    * initiated_at : timestamptz
+    completed_at : timestamptz
+    external_ref : text
+    * created_at : timestamptz
+}
+
+entity "notifications" as notifications {
+    * id : uuid <<PK>>
+    --
+    * user_id : uuid <<FK users>>
+    * type : enum
+    * channel : enum
+    * title : text
+    * body : text
+    * reference_type : text
+    * reference_id : uuid
+    * read : boolean
+    sent_at : timestamptz
+    * created_at : timestamptz
+}
+
+entity "user_notification_prefs" as user_notification_prefs {
+    * id : uuid <<PK>>
+    --
+    * user_id : uuid <<FK users>>
+    * notification_type : enum
+    * channel : enum
+    * enabled : boolean
+    * created_at : timestamptz
+    * updated_at : timestamptz
+}
+
+entity "provider_flows" as provider_flows {
+    * id : uuid <<PK>>
+    --
+    * provider_name : text
+    * flow_type : enum
+    * steps : jsonb
+    * success_rate : numeric
+    * last_verified_at : timestamptz
+    * version : integer
+    * is_active : boolean
+    * created_at : timestamptz
+    * updated_at : timestamptz
+}
+
+entity "billing_events" as billing_events {
+    * id : uuid <<PK>>
+    --
+    * user_id : uuid <<FK users>>
+    * stripe_event_id : text <<UNIQUE>>
+    * event_type : enum
+    * amount : numeric
+    * currency : text
+    * status : enum
+    * occurred_at : timestamptz
+    * created_at : timestamptz
+}
+
+' Relationships
+users ||--o{ plaid_items
+users ||--o{ accounts
+users ||--o{ transactions
+users ||--o{ subscriptions
+users ||--o{ waste_flags
+users ||--o{ actions
+users ||--o{ savings_records
+users ||--o{ savings_destinations
+users ||--o{ transfers
+users ||--o{ notifications
+users ||--o{ user_notification_prefs
+users ||--o{ billing_events
+
+plaid_items ||--o{ accounts
+accounts ||--o{ transactions
+accounts ||--o{ savings_destinations
+
+subscriptions ||--o{ waste_flags
+subscriptions ||--o{ actions
+
+actions ||--o{ cancellation_attempts
+actions ||--o{ negotiation_sessions
+actions ||--o{ savings_records
+
+savings_destinations ||--o{ transfers
+
+@enduml

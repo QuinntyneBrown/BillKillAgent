@@ -1,0 +1,62 @@
+@startuml State_Subscription_Recommendation
+title Subscription Recommendation State Machine
+
+skinparam state {
+    BackgroundColor<<initial>> LightBlue
+    BackgroundColor<<analyzed>> LightYellow
+    BackgroundColor<<pending>> Wheat
+    BackgroundColor<<progress>> LightGreen
+    BackgroundColor<<done>> LightGray
+}
+
+[*] --> Unanalyzed <<initial>> : Subscription\ndiscovered
+
+Unanalyzed --> Analyzed <<analyzed>> : Usage analysis and\nvalue scoring complete
+
+Analyzed --> ActionPending <<pending>> : Waste flag created with\nrecommended action
+Analyzed --> Unanalyzed <<initial>> : Re-analysis triggered\nby new transactions
+
+ActionPending --> ActionInProgress <<progress>> : User approves action\nor autonomy gate passes
+ActionPending --> Analyzed <<analyzed>> : User dismisses\nrecommendation
+ActionPending --> ActionPending : Recommendation\nupdated by re-analysis
+
+ActionInProgress --> Resolved <<done>> : Action completed\nsuccessfully
+ActionInProgress --> ActionPending <<pending>> : Action failed,\nawait retry decision
+ActionInProgress --> Analyzed <<analyzed>> : User cancels\nin-progress action
+
+Resolved --> Unanalyzed <<initial>> : Subscription reactivated\nor new charges detected
+Resolved --> [*] : Subscription cancelled\nand confirmed
+
+note right of Unanalyzed
+  New subscription detected
+  by Feature 01. Awaiting
+  first analysis pass.
+end note
+
+note right of Analyzed
+  Value score and usage
+  profile computed. No waste
+  flag if score is high.
+end note
+
+note right of ActionPending
+  Waste detected. Recommendation
+  (cancel, negotiate, downgrade)
+  awaits user approval or
+  autonomy gate clearance.
+end note
+
+note right of ActionInProgress
+  Cancellation, negotiation,
+  or downgrade is being
+  executed by Features 03-05.
+end note
+
+note right of Resolved
+  Action completed. Savings
+  tracked. Subscription may
+  re-enter cycle if charges
+  reappear.
+end note
+
+@enduml

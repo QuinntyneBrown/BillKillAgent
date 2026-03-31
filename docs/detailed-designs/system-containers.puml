@@ -1,0 +1,44 @@
+@startuml BillKillAgent_System_Containers
+!include <C4/C4_Container>
+
+title BillKillAgent - Container Diagram (C4 Level 2)
+
+Person(user, "User", "Consumer managing subscriptions and bills")
+
+System_Boundary(billkill, "BillKillAgent Platform") {
+    Container(webapp, "Next.js Web App", "Next.js 15, React, TypeScript", "Server-rendered dashboard for account management, subscription review, and action approval")
+    Container(api, "tRPC API", "tRPC, Node.js", "Type-safe API layer handling authentication, business logic, and external service orchestration")
+    Container(worker, "BullMQ Worker", "Node.js, BullMQ", "Background job processor for transaction sync, waste analysis, cancellations, and negotiations")
+    ContainerDb(postgres, "PostgreSQL", "PostgreSQL 16, Drizzle ORM", "Primary data store for users, accounts, transactions, subscriptions, and action history")
+    ContainerDb(redis, "Redis", "Redis 7", "Job queue backing store, caching layer, and rate-limit counters")
+}
+
+System_Ext(supabase_auth, "Supabase Auth", "Authentication and session management")
+System_Ext(plaid, "Plaid", "Bank account linking and transaction sync")
+System_Ext(claude_api, "Claude API", "LLM-powered analysis and negotiation reasoning")
+System_Ext(twilio, "Twilio", "Voice calls and SMS for negotiations")
+System_Ext(deepgram, "Deepgram", "Real-time speech-to-text")
+System_Ext(elevenlabs, "ElevenLabs", "AI voice synthesis")
+System_Ext(stripe, "Stripe", "Platform billing")
+System_Ext(providers, "Service Providers", "Subscription and bill providers")
+
+Rel(user, webapp, "Uses", "HTTPS")
+Rel(webapp, api, "Calls procedures", "tRPC over HTTPS")
+Rel(api, postgres, "Reads/writes", "Drizzle ORM")
+Rel(api, redis, "Caches, rate-limits", "ioredis")
+Rel(api, worker, "Enqueues jobs", "BullMQ")
+Rel(worker, postgres, "Reads/writes", "Drizzle ORM")
+Rel(worker, redis, "Dequeues jobs", "BullMQ")
+
+Rel(api, supabase_auth, "Authenticates users", "HTTPS")
+Rel(api, plaid, "Link tokens, token exchange", "HTTPS")
+Rel(worker, plaid, "Transaction sync", "HTTPS")
+Rel(worker, claude_api, "Analysis, negotiation scripts", "HTTPS")
+Rel(worker, twilio, "Outbound calls, SMS", "HTTPS")
+Rel(worker, deepgram, "Audio transcription", "WebSocket")
+Rel(worker, elevenlabs, "Voice synthesis", "HTTPS")
+Rel(api, stripe, "Billing", "HTTPS")
+Rel(worker, providers, "Cancels, negotiates", "Browser/API")
+
+LAYOUT_WITH_LEGEND()
+@enduml

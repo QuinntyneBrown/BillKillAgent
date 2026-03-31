@@ -1,0 +1,51 @@
+@startuml Sequence_ActionApproval
+title Feature 09 - Action Approval Flow
+
+actor User
+participant "Browser\n(ActionItem)" as UI
+participant "React Query\nCache" as RQ
+participant "tRPC API" as API
+participant "BullMQ" as Queue
+database "PostgreSQL" as DB
+participant "SSE\nEndpoint" as SSE
+
+User -> UI : Tap "Approve" button
+
+UI -> RQ : Optimistic update:\nremove from pending,\nadd to inProgress
+RQ --> UI : Re-render immediately\n(action moves to In Progress tab)
+
+UI -> API : action.approve({ actionId })
+API -> DB : UPDATE actions\nSET status='approved',\napproved_at=now()
+API -> Queue : Enqueue job:\naction.execute({ actionId })
+API --> UI : { success: true }
+
+note right of RQ
+    If mutation fails,
+    React Query rolls back
+    the optimistic update.
+end note
+
+Queue -> Queue : Worker picks up job\n(cancellation/negotiation)
+
+Queue -> DB : UPDATE actions\nSET status='in_progress'
+Queue -> SSE : Publish to Redis\nuser:{id}:actions
+
+SSE --> UI : SSE event:\n{ type: 'action.status_changed',\n  actionId, status: 'in_progress' }
+
+UI -> RQ : invalidateQueries(['actions'])
+RQ -> API : action.list() (refetch)
+API --> RQ : Updated action list
+
+note right of Queue
+    Worker continues executing
+    the action (call provider,
+    navigate portal, etc.)
+end note
+
+Queue -> DB : UPDATE actions\nSET status='completed'
+Queue -> SSE : Publish status change
+
+SSE --> UI : SSE event:\n{ status: 'completed',\n  savings: 127.00 }
+UI -> RQ : invalidateQueries(['actions',\n'dashboard', 'savings'])
+
+@enduml

@@ -1,0 +1,38 @@
+@startuml Sequence_OAuth
+title Feature 08 - Google/Apple OAuth Sign-In Flow
+
+actor User
+participant "Frontend\n(Next.js)" as FE
+participant "Supabase Auth" as SA
+participant "OAuth Provider\n(Google/Apple)" as OAuth
+participant "tRPC API" as API
+participant "AuthService" as Auth
+database "PostgreSQL" as DB
+
+User -> FE : Click "Continue with Google"
+FE -> SA : supabase.auth.signInWithOAuth(\n  { provider: 'google',\n    options: { redirectTo } })
+SA --> FE : Redirect URL
+FE -> OAuth : Browser redirect to\nGoogle consent screen
+
+User -> OAuth : Grant consent
+OAuth -> SA : Authorization code\n(PKCE callback)
+SA -> OAuth : Exchange code for tokens
+OAuth --> SA : { access_token, id_token }
+SA -> SA : Create or link\nauth record
+
+SA -> FE : Redirect /auth/callback\nwith session tokens
+
+FE -> FE : supabase.auth.getSession()
+FE -> API : auth.completeSignUp(\n  { supabaseUserId, email, name })
+API -> Auth : completeSignUp()
+
+alt New user (no users row)
+    Auth -> DB : INSERT users + user_settings
+    Auth --> API : { user, isNewUser: true }
+    API --> FE : Redirect to onboarding
+else Existing user
+    Auth --> API : { user, isNewUser: false }
+    API --> FE : Redirect to dashboard
+end
+
+@enduml

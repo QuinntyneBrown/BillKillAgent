@@ -1,0 +1,165 @@
+@startuml Feature01_Class_Diagram
+!theme plain
+title Feature 01: Bank Feed & Subscription Discovery - Class Diagram
+
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+
+interface IPlaidAdapter {
+    +createLinkToken(userId, options?): Promise<string>
+    +exchangePublicToken(publicToken): Promise<TokenExchange>
+    +syncTransactions(accessToken, cursor): Promise<SyncResponse>
+    +getItem(accessToken): Promise<PlaidItemInfo>
+    +removeItem(accessToken): Promise<void>
+    +verifyWebhookSignature(body, headers): Promise<boolean>
+}
+
+interface ITransactionRepository {
+    +upsertTransactions(txns): Promise<void>
+    +updateTransactions(txns): Promise<void>
+    +softDeleteTransactions(ids): Promise<void>
+    +getTransactionsByUser(userId, options?): Promise<Transaction[]>
+    +getPlaidItem(itemId): Promise<PlaidItem?>
+    +updatePlaidItemCursor(itemId, cursor): Promise<void>
+    +updatePlaidItemStatus(itemId, status): Promise<void>
+}
+
+interface ISubscriptionRepository {
+    +create(sub): Promise<Subscription>
+    +createMany(subs): Promise<Subscription[]>
+    +update(id, data): Promise<Subscription>
+    +findByUser(userId): Promise<Subscription[]>
+    +findByUserAndMerchant(userId, merchant): Promise<Subscription?>
+}
+
+class PlaidLinkService {
+    -plaidAdapter: IPlaidAdapter
+    -txRepo: ITransactionRepository
+    -syncQueue: Queue
+    +createLinkToken(userId, options?): Promise<string>
+    +exchangePublicToken(userId, publicToken, metadata): Promise<PlaidItem>
+    +createUpdateLinkToken(userId, itemId): Promise<string>
+}
+
+class PlaidWebhookHandler {
+    -plaidAdapter: IPlaidAdapter
+    -txRepo: ITransactionRepository
+    -syncQueue: Queue
+    +handleWebhook(headers, body): Promise<void>
+    -verifySignature(headers, body): Promise<boolean>
+    -handleTransactionSync(itemId): Promise<void>
+    -handleItemError(itemId, errorCode): Promise<void>
+}
+
+class TransactionSyncService {
+    -plaidAdapter: IPlaidAdapter
+    -txRepo: ITransactionRepository
+    -merchantEnricher: MerchantEnricher
+    -detectionQueue: Queue
+    +syncTransactions(plaidItemId): Promise<SyncResult>
+    -processAdded(txns): Promise<void>
+    -processModified(txns): Promise<void>
+    -processRemoved(ids): Promise<void>
+}
+
+class RecurringChargeDetector {
+    -txRepo: ITransactionRepository
+    -merchantEnricher: MerchantEnricher
+    +detectRecurringCharges(userId, txns): Promise<DetectedPattern[]>
+    -groupByMerchant(txns): Map<string, Transaction[]>
+    -analyzeFrequency(txns): FrequencyResult?
+    -clusterAmounts(txns): AmountCluster[]
+    -calculateConfidence(pattern): number
+}
+
+class MerchantEnricher {
+    -cache: RedisClient
+    +normalizeMerchantName(rawName): string
+    +enrichMerchant(name): Promise<MerchantInfo>
+    +resolveLogoUrl(name): Promise<string?>
+    +mapCategory(name, categories): string
+}
+
+class SubscriptionFactory {
+    -subRepo: ISubscriptionRepository
+    -merchantEnricher: MerchantEnricher
+    +createFromPatterns(userId, patterns): Promise<Subscription[]>
+    +updateExisting(sub, pattern): Promise<Subscription>
+    -deduplicatePatterns(patterns, existing): DetectedPattern[]
+}
+
+class PlaidItem <<entity>> {
+    +id: uuid
+    +userId: uuid
+    +plaidItemId: string
+    +accessToken: string
+    +institutionName: string
+    +status: PlaidItemStatus
+    +cursor: string
+    +errorCode: string?
+}
+
+class Transaction <<entity>> {
+    +id: uuid
+    +accountId: uuid
+    +userId: uuid
+    +plaidTransactionId: string
+    +amount: number
+    +date: Date
+    +merchantName: string
+    +normalizedMerchant: string
+    +category: string[]
+    +pending: boolean
+}
+
+class Subscription <<entity>> {
+    +id: uuid
+    +userId: uuid
+    +merchantName: string
+    +normalizedMerchant: string
+    +estimatedAmount: number
+    +frequency: Frequency
+    +confidenceScore: number
+    +status: SubscriptionStatus
+}
+
+enum PlaidItemStatus {
+    Pending
+    Active
+    NeedsReauth
+    Error
+    Disconnected
+}
+
+enum Frequency {
+    Weekly
+    Biweekly
+    Monthly
+    Quarterly
+    Annual
+}
+
+enum SubscriptionStatus {
+    Detected
+    Confirmed
+    Cancelled
+    Paused
+}
+
+PlaidLinkService --> IPlaidAdapter
+PlaidLinkService --> ITransactionRepository
+PlaidWebhookHandler --> IPlaidAdapter
+PlaidWebhookHandler --> ITransactionRepository
+TransactionSyncService --> IPlaidAdapter
+TransactionSyncService --> ITransactionRepository
+TransactionSyncService --> MerchantEnricher
+RecurringChargeDetector --> ITransactionRepository
+RecurringChargeDetector --> MerchantEnricher
+SubscriptionFactory --> ISubscriptionRepository
+SubscriptionFactory --> MerchantEnricher
+
+PlaidItem --> PlaidItemStatus
+Subscription --> Frequency
+Subscription --> SubscriptionStatus
+
+@enduml

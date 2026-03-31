@@ -1,0 +1,46 @@
+@startuml Sequence_SwitchPlan
+title Execute Plan Switch - Sequence
+
+participant "User" as User
+participant "tRPC API" as API
+participant "PlanSwitch\nExecutor" as Executor
+participant "Voice Negotiation\n(Feature 04)" as Voice
+participant "Cancellation\n(Feature 03)" as Cancel
+participant "PostgreSQL" as DB
+
+User -> API: approvePlanSwitch(comparisonId)
+API -> DB: loadPlanComparison(comparisonId)
+DB --> API: PlanComparison
+
+alt Same-provider switch
+    API -> Executor: executeSameProviderSwitch(subId, newPlanId)
+    activate Executor
+    Executor -> Voice: requestPlanChange(subId, newPlanId)
+    Voice --> Executor: callOutcome{success, confirmationNo}
+    Executor -> DB: updateSubscription(newPlan)
+    Executor -> DB: storeSwitchResult(PENDING_VERIFICATION)
+    Executor --> API: SwitchResult
+    deactivate Executor
+
+else Cross-provider switch
+    API -> Executor: executeCrossProviderSwitch(subId, newPlan)
+    activate Executor
+    Executor --> API: SwitchResult{REQUIRES_USER_ACTION}
+    API --> User: "Sign up at [provider]. We will cancel old service."
+    User -> API: confirmNewServiceActive()
+    API -> Executor: proceedWithCancellation(subId)
+    Executor -> Cancel: cancelSubscription(subId)
+    Cancel --> Executor: cancellationResult
+    Executor -> DB: updateSwitchStatus(COMPLETED)
+    deactivate Executor
+end
+
+note over Executor, DB
+  Verification job scheduled for
+  next billing cycle to confirm
+  new rate appears on statement
+end note
+
+API --> User: switchConfirmation
+
+@enduml

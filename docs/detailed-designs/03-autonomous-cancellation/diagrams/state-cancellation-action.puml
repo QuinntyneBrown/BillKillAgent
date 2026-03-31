@@ -1,0 +1,64 @@
+@startuml State_Cancellation_Action
+title Cancellation Action State Machine
+
+skinparam state {
+    BackgroundColor<<approval>> LightYellow
+    BackgroundColor<<ready>> LightBlue
+    BackgroundColor<<active>> LightGreen
+    BackgroundColor<<success>> PaleGreen
+    BackgroundColor<<failure>> LightCoral
+    BackgroundColor<<retry>> Wheat
+}
+
+[*] --> PendingApproval <<approval>> : Action created,\nautonomy gate requires\nuser approval
+
+PendingApproval --> Approved <<ready>> : User approves\nor autonomy gate\nauto-approves
+PendingApproval --> [*] : User rejects\nor action expires
+
+Approved --> Queued <<ready>> : Action enqueued\nfor execution
+
+Queued --> InProgress <<active>> : Worker picks up\njob from queue
+
+InProgress --> NavigatingFlow <<active>> : Browser session\ncreated, executing\nflow steps
+
+NavigatingFlow --> Confirming <<active>> : Final confirmation\nstep reached
+
+Confirming --> Succeeded <<success>> : Cancellation\nconfirmed on\nprovider page
+Confirming --> Failed <<failure>> : Confirmation\nstep failed or\ntimed out
+
+NavigatingFlow --> Failed <<failure>> : Flow step failed,\npage state unexpected,\nor CAPTCHA detected
+
+Failed --> RetryScheduled <<retry>> : Retryable failure,\nattempts remaining
+Failed --> [*] : Max retries exceeded,\nescalated to manual
+
+RetryScheduled --> Queued <<ready>> : Backoff timer\nexpired, re-queued
+
+Succeeded --> [*] : Savings recorded,\nsubscription updated
+
+note right of PendingApproval
+  Created when autonomy
+  level is Manual or risk
+  score exceeds Supervised
+  threshold.
+end note
+
+note right of NavigatingFlow
+  Steps execute sequentially.
+  Screenshots captured at
+  each step for audit trail.
+end note
+
+note right of RetryScheduled
+  Exponential backoff:
+  1min, 5min, 30min.
+  Max 3 retry attempts.
+end note
+
+note right of Succeeded
+  Confirmation screenshot
+  stored. Subscription status
+  updated to Cancelled.
+  Savings record created.
+end note
+
+@enduml

@@ -1,0 +1,72 @@
+@startuml Sequence_VoiceNegotiation
+title Voice Negotiation - Full Flow
+
+participant "BullMQ Worker" as Worker
+participant "Orchestrator" as Orch
+participant "StrategyPlanner" as Planner
+participant "Claude API" as Claude
+participant "VoiceCallManager" as Call
+participant "Twilio" as Twilio
+participant "NegotiationAgent" as Agent
+participant "OfferEvaluator" as Eval
+
+Worker -> Orch: execute(jobData)
+activate Orch
+
+Orch -> Orch: loadSubscriptionData()
+
+Orch -> Planner: planStrategy(context)
+activate Planner
+Planner -> Claude: generateStrategy(prompt)
+Claude --> Planner: strategy JSON
+Planner --> Orch: NegotiationStrategy
+deactivate Planner
+
+Orch -> Call: initiateCall(providerPhone)
+Call -> Twilio: POST /Calls
+Twilio --> Call: callSid
+Call --> Orch: callSid
+
+Orch -> Orch: setupAudioPipeline()
+
+note over Orch: State: IVRNavigation
+Call -> Twilio: sendDTMF("1,0,#")
+note over Orch: State: HoldQueue
+note over Orch: Waiting for agent...
+
+note over Orch: State: AgentGreeting
+Orch -> Agent: generateResponse(greeting, state)
+Agent -> Claude: generate(history + strategy)
+Claude --> Agent: response text
+Agent --> Orch: AgentResponse
+
+note over Orch: State: Authentication
+Orch -> Agent: generateResponse(authRequest, state)
+Agent --> Orch: accountInfo response
+
+note over Orch: State: NegotiationActive
+Orch -> Agent: generateResponse(transcript, state)
+Agent -> Claude: generate(history + strategy)
+Claude --> Agent: negotiation response
+
+note over Orch: State: OfferReceived
+Agent -> Agent: detectOffer(transcript)
+Agent -> Eval: evaluate(offer, strategy)
+Eval --> Agent: OfferDecision{COUNTER}
+
+note over Orch: Counter-offer round
+Orch -> Agent: generateResponse(transcript, state)
+Agent -> Eval: evaluate(newOffer, strategy)
+Eval --> Agent: OfferDecision{ACCEPT}
+
+note over Orch: State: Closing
+Orch -> Agent: generateResponse(confirm, state)
+
+note over Orch: State: CallEnded
+Call -> Twilio: hangup
+Orch -> Orch: persistOutcome()
+
+Orch --> Worker: NegotiationOutcome
+deactivate Orch
+
+@enduml

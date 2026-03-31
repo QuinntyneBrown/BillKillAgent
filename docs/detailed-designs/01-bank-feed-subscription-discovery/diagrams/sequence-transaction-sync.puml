@@ -1,0 +1,56 @@
+@startuml Sequence_Transaction_Sync
+title Transaction Sync & Subscription Discovery
+
+participant "Plaid API" as Plaid
+participant "Webhook\nHandler" as WH
+queue "BullMQ" as Queue
+participant "Transaction\nSyncService" as TSS
+participant "Merchant\nEnricher" as ME
+participant "Recurring\nChargeDetector" as RCD
+participant "Subscription\nFactory" as SF
+database "PostgreSQL" as DB
+
+Plaid -> WH: POST /webhooks/plaid\n{SYNC_UPDATES_AVAILABLE}
+WH -> WH: verifySignature()
+WH -> Queue: Enqueue "tx-sync"\njob(plaidItemId)
+WH --> Plaid: 200 OK
+
+Queue -> TSS: Process "tx-sync" job
+TSS -> DB: SELECT cursor\nFROM plaid_items
+DB --> TSS: cursor
+
+loop until has_more = false
+    TSS -> Plaid: POST /transactions/sync\n(access_token, cursor)
+    Plaid --> TSS: {added, modified,\nremoved, next_cursor}
+
+    TSS -> ME: normalizeMerchantName()\nfor each transaction
+    ME --> TSS: normalized names
+
+    TSS -> DB: UPSERT added transactions
+    TSS -> DB: UPDATE modified transactions
+    TSS -> DB: SOFT DELETE removed transactions
+    TSS -> DB: UPDATE cursor = next_cursor
+end
+
+TSS -> Queue: Enqueue "detect-recurring"\njob(userId)
+
+Queue -> RCD: Process "detect-recurring" job
+RCD -> DB: SELECT transactions\nWHERE user_id = ?
+DB --> RCD: transactions[]
+
+RCD -> RCD: groupByMerchant()
+RCD -> RCD: analyzeFrequency()
+RCD -> RCD: clusterAmounts()
+RCD -> RCD: calculateConfidence()
+RCD --> RCD: DetectedPattern[]
+
+RCD -> SF: createFromPatterns(userId, patterns)
+SF -> DB: SELECT existing subscriptions
+DB --> SF: existing[]
+SF -> SF: deduplicatePatterns()
+SF -> ME: enrichMerchant() for new
+ME --> SF: logos, categories
+SF -> DB: INSERT new subscriptions
+SF -> DB: UPDATE existing subscriptions
+
+@enduml

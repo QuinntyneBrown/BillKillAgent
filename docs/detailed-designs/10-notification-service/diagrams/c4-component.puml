@@ -1,0 +1,41 @@
+@startuml C4_Component_Notification
+!include <C4/C4_Component>
+
+title Feature 10 - Notification Service - Component Diagram (C4 Level 3)
+
+Container_Boundary(notif_container, "Notification Service") {
+    Component(notif_svc, "NotificationService", "TypeScript", "Central dispatcher: receives events, orchestrates multi-channel delivery")
+    Component(template_engine, "TemplateEngine", "TypeScript, Handlebars", "Renders notification content from templates and data")
+    Component(pref_svc, "PreferenceService", "TypeScript", "Checks user channel/event preferences")
+    Component(inapp_ch, "InAppChannel", "TypeScript", "Persists to DB, publishes to Redis pub/sub")
+    Component(push_ch, "PushChannel", "TypeScript, web-push", "Web Push API delivery")
+    Component(email_ch, "EmailChannel", "TypeScript, Resend", "Transactional email delivery")
+    Component(sms_ch, "SMSChannel", "TypeScript, Twilio", "SMS delivery for critical alerts")
+}
+
+ContainerDb(postgres, "PostgreSQL", "notifications, templates, push_subscriptions, prefs")
+ContainerDb(redis, "Redis", "Pub/sub, rate counters, unread cache")
+System_Ext(resend, "Resend", "Email delivery API")
+System_Ext(twilio, "Twilio", "SMS delivery API")
+Container(frontend, "Frontend", "SSE listener, notification center")
+
+Rel(notif_svc, pref_svc, "Check preferences")
+Rel(notif_svc, template_engine, "Render content")
+Rel(notif_svc, inapp_ch, "Deliver in-app")
+Rel(notif_svc, push_ch, "Deliver push")
+Rel(notif_svc, email_ch, "Deliver email")
+Rel(notif_svc, sms_ch, "Deliver SMS")
+Rel(notif_svc, postgres, "Persist notification")
+
+Rel(template_engine, postgres, "Load templates")
+Rel(pref_svc, postgres, "Read preferences")
+Rel(inapp_ch, redis, "Publish event")
+Rel(push_ch, postgres, "Read subscriptions")
+Rel(email_ch, resend, "Send email")
+Rel(email_ch, redis, "Rate limit check")
+Rel(sms_ch, twilio, "Send SMS")
+Rel(sms_ch, redis, "Rate limit check")
+Rel(redis, frontend, "SSE push")
+
+LAYOUT_WITH_LEGEND()
+@enduml

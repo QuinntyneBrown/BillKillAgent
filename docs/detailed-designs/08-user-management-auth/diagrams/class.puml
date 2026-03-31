@@ -1,0 +1,108 @@
+@startuml Class_Auth
+!theme plain
+title Feature 08 - User Management & Auth - Class Diagram
+
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+
+interface IAuthProvider {
+    +validateToken(token: string): Promise<TokenPayload | null>
+    +createUser(email: string, password: string): Promise<{id: string}>
+    +disableUser(providerUserId: string): Promise<void>
+    +enableUser(providerUserId: string): Promise<void>
+    +deleteUser(providerUserId: string): Promise<void>
+}
+
+class SupabaseAuthProvider {
+    -adminClient: SupabaseClient
+    +validateToken(token: string): Promise<TokenPayload | null>
+    +createUser(email: string, password: string): Promise<{id: string}>
+    +disableUser(providerUserId: string): Promise<void>
+    +enableUser(providerUserId: string): Promise<void>
+    +deleteUser(providerUserId: string): Promise<void>
+}
+
+class AuthService {
+    -authProvider: IAuthProvider
+    -db: DrizzleClient
+    -stripe: Stripe
+    +completeSignUp(supabaseUserId, email, name?): Promise<User>
+    +getSessionUser(jwt: string): Promise<User | null>
+    +disableAccount(userId: string): Promise<void>
+    +reactivateAccount(userId: string): Promise<void>
+    +deleteAuthAccount(supabaseAuthId: string): Promise<void>
+}
+
+class UserProfileService {
+    -db: DrizzleClient
+    -storage: SupabaseStorage
+    +getProfile(userId): Promise<UserProfile>
+    +updateProfile(userId, data): Promise<User>
+    +uploadAvatar(userId, file): Promise<string>
+    +deleteAvatar(userId): Promise<void>
+}
+
+class AutonomySettingsService {
+    -db: DrizzleClient
+    +getSettings(userId): Promise<AutonomySettings>
+    +updateAutonomyLevel(userId, level): Promise<void>
+    +updateSavingsThreshold(userId, threshold): Promise<void>
+    +evaluateAction(userId, savings): Promise<{autoExecute: boolean}>
+}
+
+class PremiumTierService {
+    -stripe: Stripe
+    -db: DrizzleClient
+    +createCheckoutSession(userId): Promise<string>
+    +createPortalSession(userId): Promise<string>
+    +handleWebhook(event: StripeEvent): Promise<void>
+    +getCurrentTier(userId): Promise<TierInfo>
+    +cancelSubscription(userId): Promise<void>
+}
+
+class SessionMiddleware {
+    -authService: AuthService
+    -redis: Redis
+    +handle(opts: MiddlewareOpts): Promise<Context>
+}
+
+entity User <<table: users>> {
+    id: uuid <<PK>>
+    supabase_auth_id: text
+    email: text
+    display_name: text
+    avatar_url: text
+    autonomy_level: enum
+    savings_threshold: numeric
+    stripe_customer_id: text
+    plan_tier: enum
+    status: enum
+    deleted_at: timestamptz
+    created_at: timestamptz
+    updated_at: timestamptz
+}
+
+entity UserSettings <<table: user_settings>> {
+    id: uuid <<PK>>
+    user_id: uuid <<FK>>
+    notification_email_enabled: boolean
+    notification_push_enabled: boolean
+    notification_sms_enabled: boolean
+    savings_destination_id: uuid
+    auto_transfer_enabled: boolean
+    auto_transfer_frequency: enum
+    monthly_report_enabled: boolean
+    created_at: timestamptz
+    updated_at: timestamptz
+}
+
+IAuthProvider <|.. SupabaseAuthProvider
+AuthService --> IAuthProvider : uses
+AuthService --> User : creates/reads
+SessionMiddleware --> AuthService : validates JWT
+UserProfileService --> User : reads/updates
+AutonomySettingsService --> User : reads/updates
+PremiumTierService --> User : updates tier
+User "1" -- "1" UserSettings : has
+
+@enduml

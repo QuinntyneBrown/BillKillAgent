@@ -1,0 +1,36 @@
+@startuml Feature01_C4_Component
+!include <C4/C4_Component>
+
+title Feature 01: Bank Feed & Subscription Discovery - Component Diagram
+
+Container_Boundary(bankfeed, "Bank Feed Container") {
+    Component(plaid_link_svc, "PlaidLinkService", "TypeScript", "Manages Link token creation, public token exchange, and item lifecycle")
+    Component(webhook_handler, "PlaidWebhookHandler", "TypeScript", "Validates and routes inbound Plaid webhooks")
+    Component(tx_sync_svc, "TransactionSyncService", "TypeScript", "Incremental cursor-based transaction synchronization")
+    Component(recurring_detector, "RecurringChargeDetector", "TypeScript", "Pattern-matching engine for frequency analysis and amount clustering")
+    Component(merchant_enricher, "MerchantEnricher", "TypeScript", "Logo resolution, name normalization, category mapping")
+    Component(sub_factory, "SubscriptionFactory", "TypeScript", "Creates Subscription entities from detected patterns")
+}
+
+Container_Ext(frontend, "Next.js Web App", "React", "Plaid Link UI integration")
+ContainerDb_Ext(postgres, "PostgreSQL", "Drizzle ORM", "plaid_items, accounts, transactions, subscriptions")
+ContainerDb_Ext(redis, "Redis", "BullMQ", "Job queues and enrichment cache")
+System_Ext(plaid, "Plaid API", "Financial data aggregation")
+
+Rel(frontend, plaid_link_svc, "Requests Link token, sends public token", "tRPC")
+Rel(plaid_link_svc, plaid, "Creates Link tokens, exchanges tokens", "HTTPS")
+Rel(plaid_link_svc, tx_sync_svc, "Triggers initial sync", "BullMQ job")
+Rel(plaid, webhook_handler, "Sends transaction and item webhooks", "HTTPS")
+Rel(webhook_handler, tx_sync_svc, "Enqueues sync job", "BullMQ")
+Rel(tx_sync_svc, plaid, "Fetches transaction updates", "HTTPS")
+Rel(tx_sync_svc, merchant_enricher, "Normalizes merchant names", "in-process")
+Rel(tx_sync_svc, recurring_detector, "Triggers detection after sync", "BullMQ job")
+Rel(recurring_detector, sub_factory, "Passes detected patterns", "in-process")
+Rel(sub_factory, merchant_enricher, "Enriches subscription metadata", "in-process")
+Rel(plaid_link_svc, postgres, "Persists PlaidItem", "Drizzle")
+Rel(tx_sync_svc, postgres, "Reads/writes transactions", "Drizzle")
+Rel(sub_factory, postgres, "Creates subscriptions", "Drizzle")
+Rel(merchant_enricher, redis, "Caches enrichment data", "ioredis")
+
+LAYOUT_WITH_LEGEND()
+@enduml

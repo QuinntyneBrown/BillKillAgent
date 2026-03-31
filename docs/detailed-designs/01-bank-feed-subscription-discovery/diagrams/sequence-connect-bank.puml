@@ -1,0 +1,46 @@
+@startuml Sequence_Connect_Bank
+title Connect Bank Account
+
+actor User
+participant "Next.js\nFrontend" as FE
+participant "tRPC API" as API
+participant "PlaidLink\nService" as PLS
+participant "Plaid API" as Plaid
+database "PostgreSQL" as DB
+queue "BullMQ" as Queue
+
+User -> FE: Clicks "Connect Bank"
+FE -> API: plaid.createLinkToken()
+API -> PLS: createLinkToken(userId)
+PLS -> Plaid: POST /link/token/create
+Plaid --> PLS: link_token
+PLS --> API: linkToken
+API --> FE: linkToken
+
+FE -> FE: Opens Plaid Link modal
+User -> FE: Selects institution,\nauthenticates
+FE -> Plaid: (Plaid Link SDK flow)
+Plaid --> FE: public_token + metadata
+
+FE -> API: plaid.exchangeToken(publicToken, metadata)
+API -> PLS: exchangePublicToken(userId, publicToken, metadata)
+PLS -> Plaid: POST /item/public_token/exchange
+Plaid --> PLS: access_token + item_id
+
+PLS -> DB: INSERT plaid_item\n(status: Active, cursor: "")
+PLS -> DB: INSERT accounts\n(from metadata)
+PLS -> Queue: Enqueue "initial-sync"\njob(plaidItemId)
+PLS --> API: PlaidItem
+API --> FE: { success: true, item }
+FE --> User: "Bank connected!\nSyncing transactions..."
+
+Queue -> Queue: Worker picks up\n"initial-sync" job
+
+note right of Queue
+  The initial sync job triggers
+  TransactionSyncService which
+  is covered in the next sequence
+  diagram.
+end note
+
+@enduml

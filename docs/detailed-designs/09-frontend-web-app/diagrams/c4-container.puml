@@ -1,0 +1,45 @@
+@startuml C4_Container_System
+!include <C4/C4_Container>
+
+title BillKillAgent - System Container Diagram (C4 Level 2)
+
+Person(user, "User", "Consumer managing subscriptions and bills")
+
+System_Boundary(platform, "BillKillAgent Platform") {
+    Container(spa, "Browser SPA", "React, TypeScript", "Client-side interactive UI with real-time updates")
+    Container(nextjs, "Next.js Server", "Next.js 15, Node.js", "SSR, static assets, API routes, SSE endpoint")
+    Container(trpc, "tRPC API Layer", "tRPC, TypeScript", "Type-safe procedures for all business operations")
+    Container(worker, "BullMQ Worker", "Node.js, BullMQ", "Background jobs: sync, analysis, cancellation, negotiation")
+    ContainerDb(postgres, "PostgreSQL", "PostgreSQL 16", "Users, subscriptions, actions, savings, notifications")
+    ContainerDb(redis, "Redis", "Redis 7", "Job queues, caching, pub/sub, rate limiting")
+}
+
+System_Ext(supabase, "Supabase Auth", "Identity and session management")
+System_Ext(plaid, "Plaid", "Bank linking and transactions")
+System_Ext(stripe, "Stripe", "Subscription billing")
+System_Ext(claude, "Claude API", "AI analysis and negotiation")
+System_Ext(twilio, "Twilio", "Voice calls and SMS")
+System_Ext(deepgram, "Deepgram", "Speech-to-text")
+System_Ext(elevenlabs, "ElevenLabs", "Text-to-speech")
+
+Rel(user, spa, "Uses", "HTTPS")
+Rel(spa, nextjs, "Loads pages, SSE", "HTTPS")
+Rel(spa, trpc, "API calls", "tRPC/HTTPS")
+Rel(nextjs, trpc, "SSR data fetch", "Direct call")
+Rel(trpc, postgres, "Reads/writes", "Drizzle ORM")
+Rel(trpc, redis, "Cache, rate limit", "ioredis")
+Rel(trpc, worker, "Enqueue jobs", "BullMQ")
+Rel(worker, postgres, "Reads/writes", "Drizzle ORM")
+Rel(worker, redis, "Dequeue, pub/sub", "BullMQ")
+
+Rel(trpc, supabase, "Auth", "HTTPS")
+Rel(trpc, stripe, "Billing", "HTTPS")
+Rel(trpc, plaid, "Link tokens", "HTTPS")
+Rel(worker, plaid, "Tx sync", "HTTPS")
+Rel(worker, claude, "Analysis", "HTTPS")
+Rel(worker, twilio, "Calls/SMS", "HTTPS")
+Rel(worker, deepgram, "STT", "WebSocket")
+Rel(worker, elevenlabs, "TTS", "HTTPS")
+
+LAYOUT_WITH_LEGEND()
+@enduml

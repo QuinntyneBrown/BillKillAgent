@@ -1,0 +1,46 @@
+@startuml Sequence_PriceIncrease
+title Price Increase Detection - Sequence
+
+participant "Bank Feed Sync\n(Feature 01)" as Sync
+participant "MonitoringScheduler" as Scheduler
+participant "PriceChange\nDetector" as Detector
+participant "Claude API" as Claude
+participant "Notification\nService" as Notif
+participant "PostgreSQL" as DB
+
+Sync -> Scheduler: onTransactionsSync(userId, transactions[])
+activate Scheduler
+
+loop for each transaction
+    Scheduler -> DB: findMatchingSubscription(merchant, amount)
+    DB --> Scheduler: subscription (or null)
+
+    alt subscription found
+        Scheduler -> Detector: evaluate(subscription, transaction)
+        activate Detector
+
+        Detector -> Detector: compare amount\nexpected=$89.99, actual=$94.99
+
+        alt difference > threshold
+            Detector -> Claude: classifyChange(\n  expected, actual,\n  billingContext)
+            Claude --> Detector: PRICE_INCREASE\n(confidence: 0.92)
+
+            Detector -> DB: createAlert(\n  category=PRICE_CHANGE,\n  severity=WARNING)
+
+            Detector --> Scheduler: Alert{Netflix price\nincreased $5.00/mo}
+        else within threshold
+            Detector --> Scheduler: null (no alert)
+        end
+        deactivate Detector
+    end
+end
+
+Scheduler -> Detector: updateExpectedAmount(\n  subscriptionId, $94.99)
+
+Scheduler -> Notif: dispatchAlert(alert)
+Notif -> Notif: deliver via user's\nconfigured channels
+
+Scheduler --> Sync: alerts[]
+deactivate Scheduler
+
+@enduml

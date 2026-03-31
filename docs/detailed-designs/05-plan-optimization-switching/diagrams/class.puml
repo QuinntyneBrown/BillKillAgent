@@ -1,0 +1,82 @@
+@startuml Class_PlanOptimization
+title Plan Optimization & Switching - Class Diagram
+
+skinparam classAttributeIconSize 0
+
+interface IPlanDataSource {
+    +providerIds: string[]
+    +fetchPlans(providerId: string): Promise<Plan[]>
+    +getLastUpdated(providerId: string): Date | null
+    +isAvailable(): Promise<boolean>
+}
+
+class PlanOptimizer {
+    -discovery: AlternativeDiscoveryService
+    -analyzer: CostBenefitAnalyzer
+    +analyzeSubscription(subId: string): Promise<PlanComparison[]>
+    +analyzeAll(userId: string): Promise<Map<string, PlanComparison[]>>
+    +rankAlternatives(comparisons: PlanComparison[]): PlanComparison[]
+}
+
+class AlternativeDiscoveryService {
+    -catalog: ProviderPlanCatalog
+    +findSameProviderPlans(providerId: string, cat: string): Promise<Plan[]>
+    +findCompetitorPlans(cat: string, zip: string): Promise<Plan[]>
+    +filterByRequirements(plans: Plan[], reqs: PlanRequirements): Plan[]
+}
+
+class CostBenefitAnalyzer {
+    +analyze(current: CurrentPlan, alt: Plan): PlanComparison
+    +calculateSwitchingCosts(current: CurrentPlan, alt: Plan): SwitchingCosts
+    +projectCosts(plan: Plan, months: number): CostProjection
+    +computeScore(comparison: PlanComparison): number
+}
+
+class PlanSwitchExecutor {
+    +executeSameProviderSwitch(subId: string, planId: string): Promise<SwitchResult>
+    +executeCrossProviderSwitch(subId: string, plan: Plan): Promise<SwitchResult>
+    +verifySwitch(subId: string): Promise<VerificationResult>
+    +rollbackSwitch(switchId: string): Promise<void>
+}
+
+class ProviderPlanCatalog {
+    -dataSources: IPlanDataSource[]
+    +getPlans(providerId: string, cat?: string): Promise<Plan[]>
+    +getPlansByCategory(cat: string, zip: string): Promise<Plan[]>
+    +refreshProvider(providerId: string): Promise<void>
+    +getDataFreshness(providerId: string): Date
+}
+
+class PlanComparison <<entity>> {
+    +id: string
+    +userId: string
+    +subscriptionId: string
+    +alternativePlanId: string
+    +monthlySavings: number
+    +annualSavings: number
+    +netSavings12Month: number
+    +score: number
+    +recommendation: string
+    +status: string
+}
+
+class Plan <<entity>> {
+    +id: string
+    +providerId: string
+    +planName: string
+    +category: ServiceCategory
+    +monthlyCost: number
+    +promoCost: number | null
+    +contractLengthMonths: number | null
+    +features: Record<string, any>
+}
+
+PlanOptimizer --> AlternativeDiscoveryService
+PlanOptimizer --> CostBenefitAnalyzer
+AlternativeDiscoveryService --> ProviderPlanCatalog
+ProviderPlanCatalog --> IPlanDataSource : uses 1..*
+PlanOptimizer ..> PlanComparison : produces
+ProviderPlanCatalog --> Plan : manages
+PlanSwitchExecutor ..> PlanComparison : executes
+
+@enduml

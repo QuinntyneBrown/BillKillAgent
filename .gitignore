@@ -6,8 +6,10 @@ node_modules/
 # Build outputs
 dist/
 build/
-.next/
 out/
+.next/
+.nuxt/
+.output/
 
 # Environment variables
 .env
@@ -16,7 +18,7 @@ out/
 .env.test.local
 .env.production.local
 
-# IDE and editors
+# IDE & editors
 .vscode/
 .idea/
 *.swp
@@ -28,17 +30,27 @@ Thumbs.db
 # Testing
 coverage/
 
-# Debug logs
+# Logs
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
+# OS files
+.DS_Store
+Desktop.ini
+ehthumbs.db
+
 # TypeScript
 *.tsbuildinfo
 
-# Misc
-*.local
+# Cache
 .cache/
-.turbo/
-.vercel/
+.eslintcache
+.parcel-cache/
+
+# Misc
+*.pem
+.vercel
+.turbo

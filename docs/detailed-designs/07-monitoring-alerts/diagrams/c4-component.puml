@@ -1,0 +1,36 @@
+@startuml C4_Component_MonitoringAlerts
+!include <C4/C4_Component>
+
+title Ongoing Monitoring & Alerts - Component Diagram (C4 Level 3)
+
+System_Ext(claude, "Claude API", "Ambiguous change classification")
+System_Ext(notifSvc, "Notification Service", "Feature 10: Push, email, SMS delivery")
+
+Container_Boundary(monitoring, "Monitoring & Alerts Container") {
+    Component(scheduler, "MonitoringScheduler", "TypeScript, BullMQ", "Coordinates monitoring rules on sync and schedule")
+    Component(priceDetector, "PriceChangeDetector", "TypeScript", "Detects billing amount changes")
+    Component(newCharge, "NewChargeDetector", "TypeScript", "Identifies new recurring charges")
+    Component(trialTracker, "TrialExpirationTracker", "TypeScript", "Tracks trial end dates and alerts")
+    Component(renewalTracker, "RenewalDateTracker", "TypeScript", "Monitors upcoming renewals")
+    Component(reportGen, "MonthlyReportGenerator", "TypeScript", "Generates monthly summary reports")
+}
+
+ContainerDb(postgres, "PostgreSQL", "Drizzle ORM", "Subscriptions, alerts, reports")
+ContainerDb(redis, "Redis", "BullMQ", "Cron jobs, event queue")
+Container(bankfeed, "Bank Feed Service", "Feature 01", "Transaction sync events")
+Container(savingsCalc, "Savings Calculator", "Feature 06", "Savings data for reports")
+
+Rel(bankfeed, scheduler, "New transactions", "Event")
+Rel(scheduler, priceDetector, "Evaluates transactions")
+Rel(scheduler, newCharge, "Evaluates transactions")
+Rel(scheduler, trialTracker, "Daily scheduled check")
+Rel(scheduler, renewalTracker, "Daily scheduled check")
+Rel(scheduler, reportGen, "Monthly scheduled run")
+Rel(priceDetector, claude, "Classifies ambiguous changes", "HTTPS")
+Rel(reportGen, savingsCalc, "Reads savings data")
+Rel(scheduler, notifSvc, "Dispatches alerts")
+Rel(scheduler, postgres, "Reads subs, writes alerts", "Drizzle")
+Rel(scheduler, redis, "Cron schedule", "BullMQ")
+
+LAYOUT_WITH_LEGEND()
+@enduml

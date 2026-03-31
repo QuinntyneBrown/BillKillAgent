@@ -1,0 +1,52 @@
+@startuml State_PlaidItem
+title Plaid Item State Machine
+
+skinparam state {
+    BackgroundColor<<success>> LightGreen
+    BackgroundColor<<warning>> LightYellow
+    BackgroundColor<<error>> LightCoral
+    BackgroundColor<<terminal>> LightGray
+}
+
+[*] --> Pending : User initiates\nPlaid Link
+
+Pending --> Active <<success>> : Public token\nexchanged successfully
+Pending --> Error <<error>> : Token exchange\nfails
+
+Active --> Active : Transaction sync\ncompletes successfully
+Active --> NeedsReauth <<warning>> : PENDING_EXPIRATION\nwebhook received
+Active --> Error <<error>> : ITEM_ERROR\nwebhook received
+Active --> Disconnected <<terminal>> : User disconnects\nor revokes access
+
+NeedsReauth --> Active <<success>> : User completes\nLink update flow
+NeedsReauth --> Error <<error>> : Re-auth window\nexpires
+NeedsReauth --> Disconnected <<terminal>> : User disconnects
+
+Error --> Active <<success>> : Issue resolved via\nLink update flow
+Error --> Disconnected <<terminal>> : User disconnects\nor max retries exceeded
+
+Disconnected --> [*]
+
+note right of Active
+  Normal operating state.
+  Transaction sync runs
+  on webhook trigger and
+  daily fallback schedule.
+end note
+
+note right of NeedsReauth
+  Plaid credentials expiring.
+  User must re-authenticate
+  via Link update mode.
+  Sync continues with
+  existing credentials.
+end note
+
+note right of Error
+  Plaid reports an error
+  (e.g., ITEM_LOGIN_REQUIRED).
+  Sync is paused until
+  the user re-authenticates.
+end note
+
+@enduml

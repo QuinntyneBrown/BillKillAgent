@@ -1,28 +1,28 @@
 # Bill Kill Agent
 
-An AI-powered subscription management app that automatically detects recurring charges, negotiates better rates, cancels unwanted subscriptions, and tracks savings — all from a single dashboard.
+An AI-powered personal finance assistant that detects recurring charges, identifies savings opportunities, and autonomously negotiates better rates on your behalf.
 
 ## Features
 
-- **Subscription Detection** — Automatically scans connected bank accounts to find recurring charges
-- **AI Negotiations** — Negotiates lower rates with service providers on your behalf
+- **Smart Subscription Detection** — Automatically scans connected accounts to find all recurring charges
+- **Savings Discovery** — Analyzes subscriptions and recommends actions: cancel, negotiate, switch, or keep
+- **AI Negotiation** — Autonomously contacts providers to negotiate lower rates
 - **Action Queue** — Review and approve pending actions with one tap
-- **Savings Tracker** — Visualize cumulative savings over time with detailed breakdowns
-- **Smart Alerts** — Get notified about price increases, trial expirations, and renewal dates
-- **Autonomy Levels** — Choose supervised, semi-autonomous, or fully autonomous operation
-- **Responsive Design** — Works seamlessly across mobile (320px) through desktop (1440px+)
+- **Savings Tracking** — Monitor cumulative savings over time with detailed breakdowns
+- **Configurable Autonomy** — Choose supervised, semi-autonomous, or fully autonomous operation
+- **Responsive Design** — Works across mobile (320px) through desktop (1440px+)
 
 ## Getting Started
 
 ### Prerequisites
 
-- [Node.js](https://nodejs.org/) (v18 or later)
+- [Node.js](https://nodejs.org/) (v20 or later)
 - npm, yarn, or pnpm
 
 ### Installation
 
 ```bash
-git clone https://github.com/QuinntyneBrown/BillKillAgent.git
+git clone https://github.com/QuintyneBrown/BillKillAgent.git
 cd BillKillAgent
 npm install
 ```
@@ -42,17 +42,21 @@ npm run build
 ## Project Structure
 
 ```
-docs/           # Specifications and design files
+BillKillAgent/
+├── docs/           # Specifications and design files
+│   └── specs/      # Requirements documents
+├── src/            # Application source code
+└── README.md
 ```
 
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on how to contribute to this project.
 
+## Code of Conduct
+
+This project follows a [Code of Conduct](CODE_OF_CONDUCT.md). By participating, you are expected to uphold this code.
+
 ## License
 
 This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
-
-## Code of Conduct
-
-This project follows the [Contributor Covenant Code of Conduct](CODE_OF_CONDUCT.md).

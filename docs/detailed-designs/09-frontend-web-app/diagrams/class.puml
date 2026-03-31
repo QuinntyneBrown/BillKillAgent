@@ -1,0 +1,85 @@
+@startuml Class_Frontend
+!theme plain
+title Feature 09 - Frontend Component Hierarchy
+
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+
+package "Layout Layer" {
+    class AppShell {
+        +children: ReactNode
+        --
+        Sidebar (desktop)
+        TabBar (mobile)
+        TopHeader
+    }
+}
+
+package "Page Layer" {
+    class DashboardPage
+    class SubscriptionsPage
+    class ActionQueuePage
+    class NegotiationLogPage
+    class SavingsTrackerPage
+    class SettingsPage
+    class NotificationsPage
+}
+
+package "Widget Layer" {
+    class MetricCard {
+        +label: string
+        +value: number
+        +trend?: Trend
+    }
+    class SavingsChart {
+        +data: TimeSeriesData[]
+    }
+    class FilterBar {
+        +categories: string[]
+        +onFilterChange()
+    }
+    class SubscriptionRow {
+        +subscription: Subscription
+        +onExpand()
+    }
+    class ActionItem {
+        +action: Action
+        +variant: string
+    }
+    class AlertBanner {
+        +severity: string
+        +title: string
+        +onDismiss()
+    }
+}
+
+package "Primitive Layer (Shadcn/ui)" {
+    class Button
+    class Dialog
+    class Switch
+    class Tabs
+    class Input
+}
+
+AppShell --> DashboardPage
+AppShell --> SubscriptionsPage
+AppShell --> ActionQueuePage
+AppShell --> NegotiationLogPage
+AppShell --> SavingsTrackerPage
+AppShell --> SettingsPage
+AppShell --> NotificationsPage
+
+DashboardPage --> MetricCard
+DashboardPage --> SavingsChart
+SubscriptionsPage --> FilterBar
+SubscriptionsPage --> SubscriptionRow
+ActionQueuePage --> ActionItem
+NotificationsPage --> AlertBanner
+
+MetricCard --> Button
+FilterBar --> Input
+ActionItem --> Button
+AlertBanner --> Button
+SubscriptionRow --> Button
+
+@enduml

@@ -1,0 +1,34 @@
+@startuml C4_Component_PlanOptimization
+!include <C4/C4_Component>
+
+title Plan Optimization & Switching - Component Diagram (C4 Level 3)
+
+System_Ext(providers, "Service Providers", "Provider websites and APIs for plan data")
+System_Ext(claude, "Claude API", "Feature analysis and recommendation text")
+
+Container_Boundary(planopt, "Plan Optimization Container") {
+    Component(optimizer, "PlanOptimizer", "TypeScript", "Orchestrates plan analysis and ranking")
+    Component(discovery, "AlternativeDiscoveryService", "TypeScript", "Finds same-provider and competitor plans")
+    Component(analyzer, "CostBenefitAnalyzer", "TypeScript", "Financial comparison and scoring")
+    Component(executor, "PlanSwitchExecutor", "TypeScript", "Executes approved plan switches")
+    Component(catalog, "ProviderPlanCatalog", "TypeScript", "Centralized plan data repository")
+}
+
+ContainerDb(postgres, "PostgreSQL", "Drizzle ORM", "Plans, comparisons, switch records")
+Container(cancellation, "Cancellation Service", "Feature 03", "Handles old service cancellation")
+Container(negotiation, "Voice Negotiation", "Feature 04", "Voice calls for plan changes")
+Container(usage, "Usage Analysis", "Feature 02", "Current usage patterns")
+
+Rel(optimizer, discovery, "Finds alternatives")
+Rel(optimizer, analyzer, "Scores alternatives")
+Rel(optimizer, usage, "Reads usage data")
+Rel(discovery, catalog, "Queries plans")
+Rel(catalog, providers, "Scrapes/fetches plan data", "HTTPS")
+Rel(executor, negotiation, "Delegates voice calls")
+Rel(executor, cancellation, "Cancels old service")
+Rel(optimizer, postgres, "Stores recommendations", "Drizzle")
+Rel(catalog, postgres, "Stores plan catalog", "Drizzle")
+Rel(executor, postgres, "Tracks switch status", "Drizzle")
+
+LAYOUT_WITH_LEGEND()
+@enduml

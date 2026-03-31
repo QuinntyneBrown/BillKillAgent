@@ -1,0 +1,34 @@
+@startuml C4_Component_Frontend
+!include <C4/C4_Component>
+
+title Feature 09 - Frontend Web App - Component Diagram (C4 Level 3)
+
+Container_Boundary(frontend, "Next.js Frontend") {
+    Component(layout, "Layout Components", "React", "AppShell, Sidebar, TabBar, TopHeader")
+    Component(pages, "Page Components", "React Server/Client", "Dashboard, Subscriptions, Actions, Negotiations, Savings, Settings, Notifications")
+    Component(onboarding, "Onboarding Flow", "React Client", "Welcome, ConnectBank, Scanning, Discovery, ActionApproval")
+    Component(widgets, "Widget Components", "React Client", "MetricCard, Charts, FilterBar, ActionItem, AlertBanner")
+    Component(hooks, "Custom Hooks", "TypeScript", "useAuth, useSubscriptions, useActionQueue, useSavingsData, useNotifications")
+    Component(trpc_client, "tRPC Client", "tRPC + React Query", "Type-safe API client with caching")
+    Component(sse_client, "SSE Client", "EventSource", "Real-time action and notification updates")
+    Component(primitives, "Shadcn/ui Primitives", "React", "Button, Dialog, Switch, Tabs, Dropdown, Input")
+}
+
+Container(nextjs_server, "Next.js Server", "SSR + API routes")
+Container(trpc_api, "tRPC API", "Backend procedures")
+ContainerDb(redis, "Redis", "Pub/sub for SSE")
+
+Rel(layout, pages, "Renders")
+Rel(pages, widgets, "Composes")
+Rel(widgets, primitives, "Uses")
+Rel(pages, hooks, "Uses")
+Rel(hooks, trpc_client, "Calls")
+Rel(hooks, sse_client, "Subscribes")
+Rel(trpc_client, trpc_api, "HTTPS")
+Rel(sse_client, nextjs_server, "SSE stream")
+Rel(nextjs_server, redis, "Subscribe pub/sub")
+Rel(onboarding, hooks, "Uses")
+Rel(onboarding, widgets, "Uses")
+
+LAYOUT_WITH_LEGEND()
+@enduml

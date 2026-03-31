@@ -1,0 +1,39 @@
+@startuml Sequence_RealtimeAudio
+title Real-Time Audio Pipeline
+
+participant "Provider Agent" as Provider
+participant "Twilio\nMedia Stream" as Twilio
+participant "SpeechToText\nStream" as STT
+participant "Deepgram" as DG
+participant "NegotiationAgent" as Agent
+participant "Claude API" as Claude
+participant "TextToSpeech\nEngine" as TTS
+participant "ElevenLabs" as EL
+
+Provider -> Twilio: speaks (analog audio)
+Twilio -> STT: audio chunk (mulaw 8kHz WS)
+STT -> DG: forward audio (WebSocket)
+
+DG --> STT: interim transcript
+DG --> STT: final transcript
+STT --> Agent: TranscriptEvent{text, isFinal}
+
+Agent -> Agent: updateContext(turn)
+Agent -> Claude: generate response\n(history + strategy + state)
+Claude --> Agent: response text
+
+Agent -> TTS: speakIntoCall(text)
+TTS -> EL: POST /text-to-speech/stream\n(text, voice, ulaw_8000)
+EL --> TTS: audio chunks (streaming)
+TTS -> Twilio: media payload (mulaw WS)
+Twilio -> Provider: synthesized speech
+
+note over STT, TTS
+  Total latency budget: <2 seconds
+  Deepgram STT:  ~300ms
+  Claude API:    ~800ms
+  ElevenLabs:    ~400ms
+  Network/buffer: ~300ms
+end note
+
+@enduml

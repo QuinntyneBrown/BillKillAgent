@@ -1,0 +1,31 @@
+@startuml C4_Component_SavingsReallocation
+!include <C4/C4_Component>
+
+title Savings Reallocation - Component Diagram (C4 Level 3)
+
+System_Ext(plaid, "Plaid", "ACH transfers and account data")
+
+Container_Boundary(savings, "Savings Reallocation Container") {
+    Component(calculator, "SavingsCalculator", "TypeScript", "Computes savings from completed actions")
+    Component(transferSvc, "SavingsTransferService", "TypeScript", "Executes ACH transfers via Plaid")
+    Component(destMgr, "DestinationAccountManager", "TypeScript", "Manages destination accounts and allocations")
+    Component(scheduler, "TransferScheduler", "TypeScript, BullMQ", "Triggers transfers on user-configured schedule")
+}
+
+ContainerDb(postgres, "PostgreSQL", "Drizzle ORM", "Savings records, transfers, destinations")
+ContainerDb(redis, "Redis", "BullMQ", "Scheduled job queue")
+Container(actions, "Action Services", "Features 03-05", "Cancellation, negotiation, switch outcomes")
+
+Rel(scheduler, calculator, "Queries unrealized savings")
+Rel(scheduler, transferSvc, "Initiates transfers")
+Rel(scheduler, destMgr, "Reads allocation rules")
+Rel(calculator, actions, "Reads action outcomes")
+Rel(calculator, postgres, "Reads/writes savings records", "Drizzle")
+Rel(transferSvc, plaid, "ACH transfer API", "HTTPS")
+Rel(transferSvc, postgres, "Tracks transfer status", "Drizzle")
+Rel(destMgr, plaid, "Account linking", "HTTPS")
+Rel(destMgr, postgres, "Stores destinations", "Drizzle")
+Rel(scheduler, redis, "Scheduled jobs", "BullMQ")
+
+LAYOUT_WITH_LEGEND()
+@enduml

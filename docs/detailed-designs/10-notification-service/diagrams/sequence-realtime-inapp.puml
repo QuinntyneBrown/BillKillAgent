@@ -1,0 +1,44 @@
+@startuml Sequence_RealtimeInApp
+title Feature 10 - Real-Time In-App Notification Delivery
+
+participant "InAppChannel" as Channel
+database "PostgreSQL" as DB
+participant "Redis\nPub/Sub" as Redis
+participant "Next.js SSE\nEndpoint" as SSE
+participant "Browser\nEventSource" as ES
+participant "useNotifications\nHook" as Hook
+participant "Notification\nCenter UI" as UI
+
+note over ES, SSE
+    Browser connects to SSE on page load:
+    new EventSource('/api/events')
+end note
+
+ES -> SSE : GET /api/events\n(long-lived connection)
+SSE -> Redis : SUBSCRIBE\nuser:{userId}:notifications
+
+... Event occurs (e.g., price increase detected) ...
+
+Channel -> Redis : PUBLISH\nuser:{userId}:notifications\n{ type: 'notification.created',\n  notification: { ... } }
+
+Redis --> SSE : Message received
+SSE --> ES : data: { type:\n'notification.created',\nnotification: { id, title,\nbody, severity } }
+
+ES -> Hook : onMessage callback
+Hook -> Hook : Prepend notification\nto local cache
+Hook -> Hook : Increment\nunreadCount
+
+Hook -> UI : Re-render
+UI -> UI : Show unread badge\n(orange dot on bell icon)
+UI -> UI : If notification center open,\nshow new item at top
+
+note right of UI
+    User taps notification
+end note
+
+UI -> Hook : markAsRead(notifId)
+Hook -> DB : UPDATE notifications\nSET read=true, read_at=now()
+Hook -> Hook : Decrement unreadCount
+Hook -> UI : Update badge count
+
+@enduml

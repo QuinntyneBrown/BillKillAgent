@@ -1,0 +1,39 @@
+@startuml C4_Component_Auth
+!include <C4/C4_Component>
+
+title Feature 08 - User Management & Auth - Component Diagram (C4 Level 3)
+
+Container_Boundary(auth_container, "Auth & User Management") {
+    Component(auth_svc, "AuthService", "TypeScript", "Sign-up completion, session validation, account disable/reactivate")
+    Component(profile_svc, "UserProfileService", "TypeScript", "Profile CRUD, avatar upload/delete")
+    Component(autonomy_svc, "AutonomySettingsService", "TypeScript", "Autonomy level and threshold management")
+    Component(premium_svc, "PremiumTierService", "TypeScript", "Stripe subscription lifecycle")
+    Component(session_mw, "SessionMiddleware", "tRPC Middleware", "JWT validation, context injection")
+    Component(auth_router, "Auth tRPC Routers", "tRPC", "auth, user, billing routers")
+}
+
+System_Ext(supabase, "Supabase Auth", "Identity provider, JWT issuance, OAuth")
+System_Ext(stripe, "Stripe", "Subscription billing, customer portal")
+System_Ext(supabase_storage, "Supabase Storage", "Avatar file storage")
+ContainerDb(postgres, "PostgreSQL", "users, user_settings, billing_events")
+ContainerDb(redis, "Redis", "JWT validation cache")
+
+Rel(auth_router, session_mw, "Uses")
+Rel(session_mw, auth_svc, "Validates JWT")
+Rel(session_mw, redis, "Caches validated tokens")
+Rel(auth_router, auth_svc, "Sign-up, delete")
+Rel(auth_router, profile_svc, "Profile ops")
+Rel(auth_router, autonomy_svc, "Autonomy settings")
+Rel(auth_router, premium_svc, "Billing ops")
+
+Rel(auth_svc, supabase, "Admin API")
+Rel(auth_svc, postgres, "users CRUD")
+Rel(auth_svc, stripe, "Create customer")
+Rel(profile_svc, postgres, "users CRUD")
+Rel(profile_svc, supabase_storage, "Avatar upload")
+Rel(autonomy_svc, postgres, "users CRUD")
+Rel(premium_svc, stripe, "Checkout, portal, webhooks")
+Rel(premium_svc, postgres, "users, billing_events")
+
+LAYOUT_WITH_LEGEND()
+@enduml

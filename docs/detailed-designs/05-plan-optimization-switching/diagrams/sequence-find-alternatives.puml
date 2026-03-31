@@ -1,0 +1,50 @@
+@startuml Sequence_FindAlternatives
+title Find Plan Alternatives - Sequence
+
+participant "tRPC API /\nBullMQ Worker" as Caller
+participant "PlanOptimizer" as Optimizer
+participant "AlternativeDiscovery\nService" as Discovery
+participant "ProviderPlan\nCatalog" as Catalog
+participant "CostBenefit\nAnalyzer" as Analyzer
+participant "PostgreSQL" as DB
+
+Caller -> Optimizer: analyzeSubscription(subId)
+activate Optimizer
+
+Optimizer -> DB: loadSubscription(subId)
+DB --> Optimizer: subscription + usage data
+
+Optimizer -> Discovery: findSameProviderPlans(providerId, category)
+activate Discovery
+Discovery -> Catalog: getPlans(providerId, category)
+Catalog -> DB: query plans
+DB --> Catalog: Plan[]
+Catalog --> Discovery: Plan[]
+Discovery -> Discovery: filterByRequirements()
+Discovery --> Optimizer: sameProviderPlans[]
+deactivate Discovery
+
+Optimizer -> Discovery: findCompetitorPlans(category, zipCode)
+activate Discovery
+Discovery -> Catalog: getPlansByCategory(category, zip)
+Catalog -> DB: query plans
+DB --> Catalog: Plan[]
+Catalog --> Discovery: Plan[]
+Discovery -> Discovery: filterByRequirements()
+Discovery --> Optimizer: competitorPlans[]
+deactivate Discovery
+
+loop for each alternative plan
+    Optimizer -> Analyzer: analyze(currentPlan, alternative)
+    Analyzer -> Analyzer: calculateSwitchingCosts()
+    Analyzer -> Analyzer: projectCosts(12mo, 24mo)
+    Analyzer -> Analyzer: computeScore()
+    Analyzer --> Optimizer: PlanComparison
+end
+
+Optimizer -> Optimizer: rankAlternatives()
+Optimizer -> DB: store PlanComparison[]
+Optimizer --> Caller: ranked PlanComparison[]
+deactivate Optimizer
+
+@enduml

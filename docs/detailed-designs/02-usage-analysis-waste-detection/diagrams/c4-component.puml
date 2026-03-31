@@ -1,0 +1,30 @@
+@startuml Feature02_C4_Component
+!include <C4/C4_Component>
+
+title Feature 02: Usage Analysis & Waste Detection - Component Diagram
+
+Container_Boundary(analysis, "Usage Analysis & Waste Detection Container") {
+    Component(usage_analyzer, "UsageAnalyzer", "TypeScript", "Infers usage intensity from transaction patterns and correlated activity")
+    Component(value_scorer, "ValueScorer", "TypeScript", "Computes composite 0-100 value scores using pluggable scoring strategies")
+    Component(waste_detector, "WasteDetector", "TypeScript", "Identifies waste patterns: unused, low-value, price creep")
+    Component(overlap_detector, "OverlapDetector", "TypeScript", "Finds overlapping and duplicate subscriptions across categories")
+    Component(recommendation_engine, "RecommendationEngine", "TypeScript", "Synthesizes analysis into prioritized actionable recommendations")
+}
+
+ContainerDb_Ext(postgres, "PostgreSQL", "Drizzle ORM", "subscriptions, transactions, waste_flags, actions")
+System_Ext(claude_api, "Claude API", "LLM reasoning for recommendation explanations")
+Container_Ext(bankfeed, "Bank Feed Container", "Feature 01", "Provides subscriptions and transaction data")
+
+Rel(bankfeed, usage_analyzer, "Triggers analysis after\nnew subscription detection", "BullMQ job")
+Rel(usage_analyzer, postgres, "Reads transactions", "Drizzle")
+Rel(usage_analyzer, value_scorer, "Passes UsageProfile", "in-process")
+Rel(value_scorer, waste_detector, "Passes scored subscriptions", "in-process")
+Rel(value_scorer, overlap_detector, "Passes scored subscriptions", "in-process")
+Rel(waste_detector, recommendation_engine, "Passes WasteFlags", "in-process")
+Rel(overlap_detector, recommendation_engine, "Passes OverlapGroups", "in-process")
+Rel(recommendation_engine, claude_api, "Generates reasoning text", "HTTPS")
+Rel(recommendation_engine, postgres, "Writes waste_flags, updates subscriptions", "Drizzle")
+Rel(value_scorer, postgres, "Reads category benchmarks", "Drizzle")
+
+LAYOUT_WITH_LEGEND()
+@enduml

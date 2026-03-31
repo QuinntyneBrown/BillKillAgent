@@ -1,0 +1,59 @@
+@startuml Sequence_Cancel_Subscription
+title Cancel Subscription Flow
+
+actor User
+participant "Next.js\nFrontend" as FE
+participant "Cancellation\nOrchestrator" as CO
+participant "AutonomyGate" as AG
+participant "ActionFactory" as AF
+participant "FlowRunner" as FR
+participant "Browser\nService" as BS
+participant "Provider\nWebsite" as PW
+database "PostgreSQL" as DB
+
+== Request Phase ==
+
+User -> FE: Clicks "Cancel Subscription"
+FE -> CO: requestCancellation(userId, subId, "user")
+CO -> AG: evaluateAction(userId, action)
+AG -> DB: SELECT autonomy_level\nFROM users
+DB --> AG: autonomyLevel
+AG -> AG: calculateRiskScore(action)
+AG --> CO: GateDecision: Approved
+
+CO -> AF: createAction(subscription, userId)
+AF -> AF: selectStrategy("netflix")
+AF --> CO: CancellationAction\n(strategy: Browser)
+CO -> DB: INSERT action\n(status: Queued)
+CO --> FE: action { id, status: Queued }
+
+== Execution Phase ==
+
+CO -> FR: runFlow(action, providerFlow)
+FR -> BS: createSession()
+BS --> FR: BrowserSession
+
+loop for each FlowStep
+    FR -> BS: executeStep(session, step)
+    BS -> PW: Navigate / Click / Fill
+    PW --> BS: Page response
+    BS -> BS: captureScreenshot()
+    BS --> FR: StepResult
+    FR -> FR: validateStepResult()
+end
+
+FR -> BS: detectPageState(session,\nsuccessIndicators)
+BS --> FR: PageState: "cancellation_confirmed"
+FR -> BS: captureScreenshot(session,\n"confirmation")
+FR -> BS: closeSession(session)
+
+== Completion Phase ==
+
+FR --> CO: FlowResult: succeeded
+CO -> DB: INSERT cancellation_attempt\n(status: Succeeded)
+CO -> DB: UPDATE action\n(status: Succeeded)
+CO -> DB: UPDATE subscription\n(status: Cancelled)
+CO -> FE: Push notification:\n"Netflix cancelled successfully"
+FE --> User: "Subscription cancelled!\nEstimated savings: $15.99/mo"
+
+@enduml

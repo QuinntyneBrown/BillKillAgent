@@ -1,0 +1,80 @@
+@startuml Class_MonitoringAlerts
+title Ongoing Monitoring & Alerts - Class Diagram
+
+skinparam classAttributeIconSize 0
+
+interface IMonitoringRule {
+    +ruleId: string
+    +ruleName: string
+    +category: AlertCategory
+    +defaultEnabled: boolean
+    +evaluateTransaction(sub: Subscription, tx: Transaction, cfg: RuleConfig): Alert | null
+    +evaluateScheduled(sub: Subscription, cfg: RuleConfig): Alert[]
+    +getDefaultConfig(): RuleConfig
+}
+
+class MonitoringScheduler {
+    -rules: IMonitoringRule[]
+    -queue: BullMQ.Queue
+    +onTransactionsSync(userId: string, txns: Transaction[]): Promise<Alert[]>
+    +runDailyChecks(): Promise<void>
+    +runMonthlyReport(month: Date): Promise<void>
+    +registerRule(rule: IMonitoringRule): void
+}
+
+class PriceChangeDetector {
+    -claudeClient: ClaudeAPIClient
+    +evaluate(sub: Subscription, tx: Transaction): Alert | null
+    +classifyChange(expected: number, actual: number): ChangeType
+    +updateExpectedAmount(subId: string, amount: number): Promise<void>
+}
+
+class NewChargeDetector {
+    +evaluate(userId: string, txns: Transaction[]): Alert[]
+    +findRecurringPatterns(txns: Transaction[]): RecurringPattern[]
+    +isKnownSubscription(merchant: string, userId: string): Promise<boolean>
+}
+
+class TrialExpirationTracker {
+    +evaluate(sub: Subscription): Alert[]
+    +detectTrials(txns: Transaction[]): TrialDetection[]
+    +setTrialEndDate(subId: string, date: Date): Promise<void>
+    +getExpiringTrials(userId: string, days: number): Promise<Subscription[]>
+}
+
+class RenewalDateTracker {
+    +evaluate(sub: Subscription): Alert[]
+    +predictRenewalDate(sub: Subscription): Date | null
+    +getUpcomingRenewals(userId: string, days: number): Promise<Subscription[]>
+}
+
+class MonthlyReportGenerator {
+    +generateReport(userId: string, month: Date): Promise<MonthlyReport>
+    +calculateSpendDelta(userId: string, month: Date): Promise<SpendDelta>
+    +getTopRecommendations(userId: string): Promise<Recommendation[]>
+}
+
+class Alert <<entity>> {
+    +id: string
+    +userId: string
+    +subscriptionId: string | null
+    +ruleId: string
+    +category: AlertCategory
+    +severity: AlertSeverity
+    +title: string
+    +message: string
+    +status: AlertStatus
+    +deliveredAt: Date | null
+    +readAt: Date | null
+}
+
+PriceChangeDetector ..|> IMonitoringRule
+NewChargeDetector ..|> IMonitoringRule
+TrialExpirationTracker ..|> IMonitoringRule
+RenewalDateTracker ..|> IMonitoringRule
+
+MonitoringScheduler --> IMonitoringRule : evaluates 1..*
+MonitoringScheduler ..> Alert : produces
+MonthlyReportGenerator --> MonitoringScheduler : reads alert history
+
+@enduml

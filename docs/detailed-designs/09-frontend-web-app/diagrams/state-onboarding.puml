@@ -1,0 +1,44 @@
+@startuml State_Onboarding
+title Feature 09 - Onboarding Flow State Machine
+
+skinparam state {
+    BackgroundColor #141417
+    FontColor #FFFFFF
+    BorderColor #333333
+    ArrowColor #FF5C00
+}
+
+[*] --> Welcome : Sign-up complete
+
+Welcome : Show value proposition
+Welcome : "Let's get started" CTA
+Welcome --> ConnectBank : User clicks CTA
+
+ConnectBank : Security assurances
+ConnectBank : Plaid Link button
+ConnectBank --> PlaidLink : User clicks\n"Connect with Plaid"
+
+PlaidLink : Plaid Link modal open
+PlaidLink : User selects bank,\nenters credentials
+PlaidLink --> ConnectBank : User cancels
+PlaidLink --> Scanning : Plaid Link success\n/ save access token
+
+Scanning : Animated progress
+Scanning : Poll sync status
+Scanning : "Analyzing transactions..."
+Scanning --> Discovery : Sync complete\n/ subscriptions detected
+
+Discovery : Hero savings number
+Discovery : Summary cards
+Discovery : "Review & Save" CTA
+Discovery --> ActionApproval : User clicks CTA
+
+ActionApproval : Grouped action list
+ActionApproval : Approve/dismiss per item
+ActionApproval : "Approve All" button
+ActionApproval --> Complete : User clicks\n"Go to Dashboard"
+
+Complete : Set user.status = 'active'
+Complete --> [*] : Redirect to /dashboard
+
+@enduml

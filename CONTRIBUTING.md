@@ -1,51 +1,53 @@
 # Contributing to Bill Kill Agent
 
-Thank you for your interest in contributing! This document provides guidelines for contributing to the project.
+Thank you for your interest in contributing! This guide will help you get started.
 
 ## How to Contribute
 
-### Reporting Issues
+### Reporting Bugs
 
-- Use [GitHub Issues](https://github.com/QuinntyneBrown/BillKillAgent/issues) to report bugs or suggest features
-- Search existing issues before creating a new one
-- Provide clear steps to reproduce bugs
+- Open an issue describing the bug, steps to reproduce, expected behavior, and actual behavior.
+- Include your environment details (OS, Node.js version, browser).
+
+### Suggesting Features
+
+- Open an issue with a clear description of the feature and the problem it solves.
 
 ### Submitting Changes
 
-1. Fork the repository
+1. Fork the repository.
 2. Create a feature branch from `main`:
    ```bash
    git checkout -b feature/your-feature-name
    ```
-3. Make your changes and commit with clear, descriptive messages
-4. Push to your fork and open a pull request against `main`
+3. Make your changes, following the coding standards below.
+4. Write or update tests as needed.
+5. Commit with a clear, descriptive message.
+6. Push to your fork and open a pull request against `main`.
 
-### Pull Request Guidelines
+## Coding Standards
 
-- Keep PRs focused — one feature or fix per PR
-- Include a clear description of what changed and why
-- Ensure all existing tests pass and add tests for new functionality
-- Follow the existing code style and conventions
+- Use TypeScript with strict mode enabled.
+- Follow the existing code style and formatting conventions.
+- Write meaningful commit messages.
+- Keep pull requests focused — one feature or fix per PR.
 
-### Development Setup
+## Development Setup
 
 ```bash
-git clone https://github.com/QuinntyneBrown/BillKillAgent.git
+git clone https://github.com/QuintyneBrown/BillKillAgent.git
 cd BillKillAgent
 npm install
 npm run dev
 ```
 
-## Code Style
+## Pull Request Guidelines
 
-- Use TypeScript for all new code
-- Follow the project's ESLint and Prettier configurations
-- Write meaningful variable and function names
+- Reference any related issues in the PR description.
+- Ensure all tests pass before requesting review.
+- Keep changes small and reviewable.
+- Be responsive to review feedback.
 
 ## Code of Conduct
 
-By participating in this project, you agree to abide by our [Code of Conduct](CODE_OF_CONDUCT.md).
-
-## Questions?
-
-Open an issue or start a discussion on GitHub.
+All contributors are expected to follow our [Code of Conduct](CODE_OF_CONDUCT.md).
