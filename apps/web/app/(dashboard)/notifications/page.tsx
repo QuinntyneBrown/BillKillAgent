@@ -124,7 +124,7 @@ export default function NotificationsPage() {
                   {notif.unread && (
                     <div
                       data-testid="unread-dot"
-                      className="w-2 h-2 rounded-full bg-accent shrink-0"
+                      className="w-2.5 h-2.5 min-w-[10px] min-h-[10px] rounded-full bg-accent shrink-0"
                     />
                   )}
                 </div>
@@ -163,7 +163,7 @@ export default function NotificationsPage() {
                   {notif.unread && (
                     <div
                       data-testid="unread-dot"
-                      className="w-2 h-2 rounded-full bg-accent shrink-0"
+                      className="w-2.5 h-2.5 min-w-[10px] min-h-[10px] rounded-full bg-accent shrink-0"
                     />
                   )}
                 </div>
