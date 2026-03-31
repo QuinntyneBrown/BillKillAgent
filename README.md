@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/hero-banner.png" alt="BillKill Agent - AI-Powered Personal Finance Assistant" width="100%" />
+</p>
+
 # Bill Kill Agent
 
 An AI-powered personal finance assistant that detects recurring charges, identifies savings opportunities, and autonomously negotiates better rates on your behalf.
