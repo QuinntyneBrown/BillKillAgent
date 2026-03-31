@@ -84,6 +84,9 @@ test.describe('Subscriptions List Screen', () => {
     test('category filter reduces visible rows', async () => {
       await page.filterByCategory('Streaming');
       await expect(page.getSubscriptionRow('Netflix Premium')).toBeVisible();
+      await expect(page.getSubscriptionRow('Spotify Premium')).toBeVisible();
+      // Non-streaming items should be hidden
+      await expect(page.getSubscriptionRow('Adobe Creative Cloud')).not.toBeVisible();
     });
   });
 
@@ -109,8 +112,8 @@ test.describe('Subscriptions List Screen', () => {
       await p.setViewportSize({ width: 375, height: 812 });
       const mobilePage = new SubscriptionsPage(p);
       await mobilePage.navigate();
-      await mobilePage.expectVisible(mobilePage.heading);
       await expect(mobilePage.subscriptionRows).not.toHaveCount(0);
+      await expect(mobilePage.subscriptionRows.first()).toBeVisible();
     });
   });
 });

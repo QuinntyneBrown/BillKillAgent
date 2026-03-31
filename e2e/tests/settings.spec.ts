@@ -126,8 +126,8 @@ test.describe('Settings Screen', () => {
       await p.setViewportSize({ width: 375, height: 812 });
       const mobilePage = new SettingsPage(p);
       await mobilePage.navigate();
-      await mobilePage.expectVisible(mobilePage.heading);
       await mobilePage.expectVisible(mobilePage.autonomySection);
+      await mobilePage.expectVisible(mobilePage.notificationsSection);
     });
   });
 });

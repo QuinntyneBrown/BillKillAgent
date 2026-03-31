@@ -71,11 +71,10 @@ test.describe('Action Queue Screen', () => {
     test('shows status indicator for in-progress actions', async () => {
       await page.switchToTab('In Progress');
       const items = page.actionItems;
-      const count = await items.count();
-      if (count > 0) {
-        const status = page.getActionStatus(await items.first().innerText());
-        await page.expectVisible(status);
-      }
+      await expect(items).not.toHaveCount(0);
+      const firstItem = items.first();
+      const status = firstItem.getByTestId('action-status');
+      await expect(status).toBeVisible();
     });
   });
 

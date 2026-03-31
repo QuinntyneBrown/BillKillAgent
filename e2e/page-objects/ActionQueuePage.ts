@@ -60,6 +60,7 @@ export class ActionQueuePage extends BasePage {
 
   async switchToTab(tabName: string): Promise<void> {
     await this.page.getByRole('tab', { name: new RegExp(tabName, 'i') }).click();
+    await this.page.waitForTimeout(300);
   }
 
   async approveAction(name: string): Promise<void> {
