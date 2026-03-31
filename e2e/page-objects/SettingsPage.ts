@@ -9,7 +9,7 @@ export class SettingsPage extends BasePage {
   }
 
   get heading(): Locator {
-    return this.page.getByText('Settings');
+    return this.page.getByRole('heading', { name: 'Settings' });
   }
 
   // Connected Accounts
@@ -64,7 +64,7 @@ export class SettingsPage extends BasePage {
   }
 
   get changeDestinationButton(): Locator {
-    return this.page.getByRole('button', { name: /change/i });
+    return this.savingsDestinationSection.getByRole('button', { name: /change/i });
   }
 
   get autoTransferToggle(): Locator {

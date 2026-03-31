@@ -9,7 +9,7 @@ export class SubscriptionsPage extends BasePage {
   }
 
   get heading(): Locator {
-    return this.page.getByText('Subscriptions');
+    return this.page.getByRole('heading', { name: 'Subscriptions' });
   }
 
   get totalCount(): Locator {

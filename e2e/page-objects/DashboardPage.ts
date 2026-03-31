@@ -9,7 +9,7 @@ export class DashboardPage extends BasePage {
   }
 
   get heading(): Locator {
-    return this.page.getByText('Dashboard');
+    return this.page.getByRole('heading', { name: 'Dashboard' });
   }
 
   get welcomeMessage(): Locator {

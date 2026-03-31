@@ -9,7 +9,7 @@ export class NegotiationLogPage extends BasePage {
   }
 
   get heading(): Locator {
-    return this.page.getByText('Negotiations');
+    return this.page.getByRole('heading', { name: 'Negotiations' });
   }
 
   // Stats cards
