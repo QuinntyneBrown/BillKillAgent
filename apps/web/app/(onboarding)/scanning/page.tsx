@@ -19,9 +19,8 @@ export default function ScanningPage() {
       </p>
 
       {/* Progress Bar */}
-      <div className="w-full max-w-sm mb-8">
+      <div data-testid="scan-progress-bar" className="w-full max-w-sm mb-8">
         <Progress
-          data-testid="scan-progress-bar"
           value={67}
           className="h-3"
         />

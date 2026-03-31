@@ -81,7 +81,8 @@ export class SubscriptionsPage extends BasePage {
   }
 
   async filterByCategory(category: string): Promise<void> {
-    await this.getFilterChip(category).click();
+    await this.getFilterChip(category).dispatchEvent('click');
+    await this.page.waitForTimeout(500);
   }
 
   async openDetail(name: string): Promise<void> {
