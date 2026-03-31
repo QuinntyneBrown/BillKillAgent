@@ -1,0 +1,29 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ES2022"],
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "paths": {
+      "@billkill/shared": ["./packages/shared/src"],
+      "@billkill/shared/*": ["./packages/shared/src/*"],
+      "@billkill/db": ["./packages/db/src"],
+      "@billkill/db/*": ["./packages/db/src/*"],
+      "@billkill/api": ["./packages/api/src"],
+      "@billkill/api/*": ["./packages/api/src/*"],
+      "@billkill/queue": ["./packages/queue/src"],
+      "@billkill/queue/*": ["./packages/queue/src/*"]
+    }
+  },
+  "exclude": ["node_modules", "dist"]
+}

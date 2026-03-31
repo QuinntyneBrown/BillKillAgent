@@ -54,3 +54,6 @@ ehthumbs.db
 *.pem
 .vercel
 .turbo
+
+# Docker
+docker-compose.override.yml
